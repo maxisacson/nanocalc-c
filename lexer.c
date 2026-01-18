@@ -1,6 +1,54 @@
 #include <ctype.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
 #include "token.h"
+
+bool tok_is_keyword(const char* str) {
+#define X(x)                    \
+    if (strcmp(str, #x) == 0) { \
+        return true;            \
+    }
+    KEYWORDS
+#undef X
+
+    return false;
+}
+
+bool tok_is_command(const char* str) {
+#define X(x)                    \
+    if (strcmp(str, #x) == 0) { \
+        return true;            \
+    }
+    COMMANDS
+#undef X
+
+    return false;
+}
+
+enum TokenType tok_kw_to_tt(const char* str) {
+#define X(x)                    \
+    if (strcmp(str, #x) == 0) { \
+        return KW_##x;          \
+    }
+    KEYWORDS
+#undef X
+
+    fprintf(stderr, "token_error: unknown keyword: %s\n", str);
+    exit(1);
+}
+
+enum TokenType tok_cmd_to_tt(const char* str) {
+#define X(x)                    \
+    if (strcmp(str, #x) == 0) { \
+        return CMD_##x;         \
+    }
+    COMMANDS
+#undef X
+
+    fprintf(stderr, "token_error: unknown keyword: %s\n", str);
+    exit(1);
+}
 
 const char* tok_to_str(struct Token t) {
     const char* tt;
@@ -96,7 +144,13 @@ void tok_ident_or_keyword(struct TokenArray* arr, const char** ptr) {
     }
     *in = 0;
 
-    ta_append(arr, IDENTIFIER, value);
+    if (tok_is_keyword(value)) {
+        ta_append(arr, tok_kw_to_tt(value), 0);
+    } else if (tok_is_command(value)) {
+        ta_append(arr, tok_cmd_to_tt(value), 0);
+    } else {
+        ta_append(arr, IDENTIFIER, value);
+    }
 }
 
 void tok_string(struct TokenArray* arr, const char** ptr) {
