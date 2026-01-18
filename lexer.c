@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdlib.h>
 #include "token.h"
 
@@ -59,41 +60,40 @@ void tok_number(struct TokenArray* arr, const char** ptr) {
     char* in = value;
 
     while ('0' <= **ptr && **ptr <= '9') {
-        *in = **ptr;
-        ++in;
-        ++*ptr;
+        *in++ = *(*ptr)++;
     }
 
     if (**ptr == '.') {
-        *in = **ptr;
-        ++in;
-        ++*ptr;
+        *in++ = *(*ptr)++;
     }
 
     while ('0' <= **ptr && **ptr <= '9') {
-        *in = **ptr;
-        ++in;
-        ++*ptr;
+        *in++ = *(*ptr)++;
     }
 
     if (**ptr == 'e' || **ptr == 'E') {
-        *in = **ptr;
-        ++in;
-        ++*ptr;
+        *in++ = *(*ptr)++;
         if (**ptr == '-') {
-            *in = **ptr;
-            ++in;
-            ++*ptr;
+            *in++ = *(*ptr)++;
         }
     }
 
     while ('0' <= **ptr && **ptr <= '9') {
-        *in = **ptr;
-        ++in;
-        ++*ptr;
+        *in++ = *(*ptr)++;
     }
 
     ta_append(arr, NUMBER, value);
+}
+
+void tok_ident_or_keyword(struct TokenArray* arr, const char** ptr) {
+    char* value = malloc(512);
+    char* in = value;
+
+    while (isalnum(**ptr) || **ptr == '_') {
+        *in++ = *(*ptr)++;
+    }
+
+    ta_append(arr, IDENTIFIER, value);
 }
 
 int tokenize(const char* string, struct Token* tokens[]) {
@@ -125,7 +125,7 @@ int tokenize(const char* string, struct Token* tokens[]) {
             case '<':
                 if (*peek == '=') {
                     ta_append(&arr, LEQ, 0);
-                    s+=2;
+                    s += 2;
                 } else {
                     ta_append(&arr, LT, 0);
                     ++s;
@@ -134,7 +134,7 @@ int tokenize(const char* string, struct Token* tokens[]) {
             case '>':
                 if (*peek == '=') {
                     ta_append(&arr, GEQ, 0);
-                    s+=2;
+                    s += 2;
                 } else {
                     ta_append(&arr, GT, 0);
                     ++s;
@@ -143,7 +143,7 @@ int tokenize(const char* string, struct Token* tokens[]) {
             case '=':
                 if (*peek == '=') {
                     ta_append(&arr, EEQ, 0);
-                    s+=2;
+                    s += 2;
                 } else {
                     ta_append(&arr, EQ, 0);
                     ++s;
@@ -221,6 +221,8 @@ int tokenize(const char* string, struct Token* tokens[]) {
             default:
                 if ('0' <= *s && *s <= '9') {
                     tok_number(&arr, &s);
+                } else if (isalpha(*s) || *s == '_') {
+                    tok_ident_or_keyword(&arr, &s);
                 } else {
                     fprintf(stderr, "token_error: unknown token: %c\n", *s);
                     exit(1);
