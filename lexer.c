@@ -82,6 +82,8 @@ void tok_number(struct TokenArray* arr, const char** ptr) {
         *in++ = *(*ptr)++;
     }
 
+    *in = 0;
+
     ta_append(arr, NUMBER, value);
 }
 
@@ -92,8 +94,23 @@ void tok_ident_or_keyword(struct TokenArray* arr, const char** ptr) {
     while (isalnum(**ptr) || **ptr == '_') {
         *in++ = *(*ptr)++;
     }
+    *in = 0;
 
     ta_append(arr, IDENTIFIER, value);
+}
+
+void tok_string(struct TokenArray* arr, const char** ptr) {
+    char* value = malloc(512);
+    char* in = value;
+
+    ++*ptr;
+    while (**ptr && **ptr != '"') {
+        *in++ = *(*ptr)++;
+    }
+    ++*ptr;
+    *in = 0;
+
+    ta_append(arr, STRING, value);
 }
 
 int tokenize(const char* string, struct Token* tokens[]) {
@@ -223,6 +240,8 @@ int tokenize(const char* string, struct Token* tokens[]) {
                     tok_number(&arr, &s);
                 } else if (isalpha(*s) || *s == '_') {
                     tok_ident_or_keyword(&arr, &s);
+                } else if (*s == '"') {
+                    tok_string(&arr, &s);
                 } else {
                     fprintf(stderr, "token_error: unknown token: %c\n", *s);
                     exit(1);
