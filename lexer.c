@@ -107,12 +107,15 @@ void tok_number(struct TokenArray* arr, const char** ptr) {
     char* value = malloc(512);
     char* in = value;
 
+    enum TokenType tt = TOK_INTEGER;
+
     while ('0' <= **ptr && **ptr <= '9') {
         *in++ = *(*ptr)++;
     }
 
     if (**ptr == '.') {
         *in++ = *(*ptr)++;
+        tt = TOK_FLOAT;
     }
 
     while ('0' <= **ptr && **ptr <= '9') {
@@ -124,6 +127,7 @@ void tok_number(struct TokenArray* arr, const char** ptr) {
         if (**ptr == '-') {
             *in++ = *(*ptr)++;
         }
+        tt = TOK_FLOAT;
     }
 
     while ('0' <= **ptr && **ptr <= '9') {
@@ -132,7 +136,7 @@ void tok_number(struct TokenArray* arr, const char** ptr) {
 
     *in = 0;
 
-    ta_append(arr, NUMBER, value);
+    ta_append(arr, tt, value);
 }
 
 void tok_ident_or_keyword(struct TokenArray* arr, const char** ptr) {
@@ -149,7 +153,7 @@ void tok_ident_or_keyword(struct TokenArray* arr, const char** ptr) {
     } else if (tok_is_command(value)) {
         ta_append(arr, tok_cmd_to_tt(value), 0);
     } else {
-        ta_append(arr, IDENTIFIER, value);
+        ta_append(arr, TOK_IDENTIFIER, value);
     }
 }
 
@@ -164,7 +168,7 @@ void tok_string(struct TokenArray* arr, const char** ptr) {
     ++*ptr;
     *in = 0;
 
-    ta_append(arr, STRING, value);
+    ta_append(arr, TOK_STRING, value);
 }
 
 int tokenize(const char* string, struct Token* tokens[]) {
@@ -181,7 +185,7 @@ int tokenize(const char* string, struct Token* tokens[]) {
                 continue;
                 ++s;
             case '\n':
-                ta_append(&arr, EOL, 0);
+                ta_append(&arr, TOK_EOL, 0);
                 ++s;
                 break;
             case '#':
@@ -190,100 +194,100 @@ int tokenize(const char* string, struct Token* tokens[]) {
                     }
                     break;
                 }
-                ta_append(&arr, HASH, 0);
+                ta_append(&arr, TOK_HASH, 0);
                 ++s;
                 break;
             case '<':
                 if (*peek == '=') {
-                    ta_append(&arr, LEQ, 0);
+                    ta_append(&arr, TOK_LEQ, 0);
                     s += 2;
                 } else {
-                    ta_append(&arr, LT, 0);
+                    ta_append(&arr, TOK_LT, 0);
                     ++s;
                 }
                 break;
             case '>':
                 if (*peek == '=') {
-                    ta_append(&arr, GEQ, 0);
+                    ta_append(&arr, TOK_GEQ, 0);
                     s += 2;
                 } else {
-                    ta_append(&arr, GT, 0);
+                    ta_append(&arr, TOK_GT, 0);
                     ++s;
                 }
                 break;
             case '=':
                 if (*peek == '=') {
-                    ta_append(&arr, EEQ, 0);
+                    ta_append(&arr, TOK_EEQ, 0);
                     s += 2;
                 } else {
-                    ta_append(&arr, EQ, 0);
+                    ta_append(&arr, TOK_EQ, 0);
                     ++s;
                 }
                 break;
             case '!':
                 if (*peek == '=') {
                     s += 2;
-                    ta_append(&arr, NEQ, 0);
+                    ta_append(&arr, TOK_NEQ, 0);
                     break;
                 }
             case '-':
-                ta_append(&arr, MINUS, 0);
+                ta_append(&arr, TOK_MINUS, 0);
                 ++s;
                 break;
             case '+':
-                ta_append(&arr, PLUS, 0);
+                ta_append(&arr, TOK_PLUS, 0);
                 ++s;
                 break;
             case '*':
-                ta_append(&arr, STAR, 0);
+                ta_append(&arr, TOK_STAR, 0);
                 ++s;
                 break;
             case '/':
-                ta_append(&arr, FSLASH, 0);
+                ta_append(&arr, TOK_FSLASH, 0);
                 ++s;
                 break;
             case '^':
-                ta_append(&arr, POWER, 0);
+                ta_append(&arr, TOK_POWER, 0);
                 ++s;
                 break;
             case '%':
-                ta_append(&arr, PERC, 0);
+                ta_append(&arr, TOK_PERC, 0);
                 ++s;
                 break;
             case ',':
-                ta_append(&arr, COMMA, 0);
+                ta_append(&arr, TOK_COMMA, 0);
                 ++s;
                 break;
             case '(':
-                ta_append(&arr, LPAREN, 0);
+                ta_append(&arr, TOK_LPAREN, 0);
                 ++s;
                 break;
             case ')':
-                ta_append(&arr, RPAREN, 0);
+                ta_append(&arr, TOK_RPAREN, 0);
                 ++s;
                 break;
             case ':':
-                ta_append(&arr, COLON, 0);
+                ta_append(&arr, TOK_COLON, 0);
                 ++s;
                 break;
             case ';':
-                ta_append(&arr, SEMICOLON, 0);
+                ta_append(&arr, TOK_SEMICOLON, 0);
                 ++s;
                 break;
             case '[':
-                ta_append(&arr, LBRACKET, 0);
+                ta_append(&arr, TOK_LBRACKET, 0);
                 ++s;
                 break;
             case ']':
-                ta_append(&arr, RBRACKET, 0);
+                ta_append(&arr, TOK_RBRACKET, 0);
                 ++s;
                 break;
             case '{':
-                ta_append(&arr, LBRACE, 0);
+                ta_append(&arr, TOK_LBRACE, 0);
                 ++s;
                 break;
             case '}':
-                ta_append(&arr, RBRACE, 0);
+                ta_append(&arr, TOK_RBRACE, 0);
                 ++s;
                 break;
             case '.':
@@ -304,7 +308,7 @@ int tokenize(const char* string, struct Token* tokens[]) {
         };
     }
 
-    ta_append(&arr, END, 0);
+    ta_append(&arr, TOK_EOF, 0);
     *tokens = arr.data;
 
     return arr.size;

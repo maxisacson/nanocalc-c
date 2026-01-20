@@ -11,7 +11,7 @@ int main(int argc, const char* argv[]) {
     struct Token* tokens;
     tokenize(argv[1], &tokens);
 
-    while (tokens->type != END) {
+    while (tokens->type != TOK_EOF) {
         printf("%s ", tok_to_str(*tokens++));
     }
 
