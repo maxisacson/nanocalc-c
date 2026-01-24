@@ -41,35 +41,76 @@ end: ';' | 'eol'
 #include <stdlib.h>
 #include "lexer.h"
 
-const char* ast_node_to_str(struct AstNode node) {
+const char* ast_node_to_str(struct AstNode* node) {
     char* buf = malloc(128);
 
-    switch (node.type) {
-        case AST_LITERAL:
-            switch (node.value.type) {
-                case V_INT:
-                    sprintf(buf, "(literal %lld)", node.value.int_value);
-                    break;
-                case V_FLOAT:
-                    sprintf(buf, "(literal %f)", node.value.float_value);
-                    break;
-                default:
-                    fprintf(stderr, "error: unknown value type: %d\n", node.value.type);
-                    exit(1);
-            }
-            break;
+    switch (node->type) {
+        case AST_LITERAL: {
+            const char* sval = ast_value_to_str(&node->value);
+            sprintf(buf, "(literal %s)", sval);
+        } break;
         case AST_BINOP: {
-            const char* lhs = ast_node_to_str(*node.lhs);
-            const char* rhs = ast_node_to_str(*node.rhs);
-            sprintf(buf, "(binop %s %s)", lhs, rhs);
-        }
-        break;
+            const char* lhs = ast_node_to_str(node->lhs);
+            const char* rhs = ast_node_to_str(node->rhs);
+            const char* op = binop_type_to_str(node->binop_type);
+            sprintf(buf, "(binop%s %s %s)", op, lhs, rhs);
+        } break;
         default:
-            fprintf(stderr, "error: unknown AST node type: %d\n", node.type);
+            fprintf(stderr, "error: unknown AST node type: %d\n", node->type);
             exit(1);
     };
 
     return buf;
+}
+
+const char* ast_value_to_str(struct AstValue* value) {
+    char* buf = malloc(128);
+
+    switch (value->type) {
+        case V_INT:
+            sprintf(buf, "%lld", value->int_value);
+            break;
+        case V_FLOAT:
+            sprintf(buf, "%f", value->float_value);
+            break;
+        default:
+            fprintf(stderr, "error: unknown value type: %d\n", value->type);
+            exit(1);
+    }
+
+    return buf;
+}
+
+const char* binop_type_to_str(enum TokenType binop_type) {
+    switch (binop_type) {
+        case TOK_LEQ:
+            return "<=";
+        case TOK_GEQ:
+            return ">=";
+        case TOK_EEQ:
+            return "==";
+        case TOK_NEQ:
+            return "!=";
+        case TOK_PLUS:
+            return "+";
+        case TOK_MINUS:
+            return "-";
+        case TOK_STAR:
+            return "*";
+        case TOK_FSLASH:
+            return "/";
+        case TOK_POWER:
+            return "^";
+        case TOK_PERC:
+            return "%";
+        case TOK_LT:
+            return "<";
+        case TOK_GT:
+            return ">";
+        default:
+            fprintf(stderr, "error: unknown binop type: %d\n", binop_type);
+            exit(1);
+    }
 }
 
 static struct AstNode* new_node() {
@@ -81,22 +122,24 @@ void syntax_error(const char* msg) {
 }
 
 void parse_expr(struct Parser* parser, struct AstNode* node) {
-    struct AstNode* lhs = new_node();
-    struct AstNode* rhs = new_node();
+    parse_atom(parser, node);
 
-    parse_atom(parser, lhs);
-    node->lhs = lhs;
+    struct AstNode* tmp = new_node();
+    while (parser->tok->type == TOK_PLUS || parser->tok->type == TOK_MINUS) {
+        enum TokenType op = parser->tok->type;
+        parser->tok++;
 
-    if (parser->tok->type != TOK_PLUS && parser->tok->type != TOK_MINUS) {
-        syntax_error("expected binary operator");
-        exit(EXIT_FAILURE);
+        struct AstNode* rhs = new_node();
+        parse_atom(parser, rhs);
+
+        struct AstNode* lhs = new_node();
+        *lhs = *node;
+
+        node->type = AST_BINOP;
+        node->binop_type = op;
+        node->lhs = lhs;
+        node->rhs = rhs;
     }
-
-    node->type = AST_BINOP;
-    node->binop_type = (parser->tok++)->type;
-
-    parse_atom(parser, rhs);
-    node->rhs = rhs;
 }
 
 void parse_atom(struct Parser* parser, struct AstNode* node) {

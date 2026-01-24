@@ -1,0 +1,52 @@
+#include "evaler.h"
+#include <stdlib.h>
+
+typedef enum TokenType Binop_t;
+typedef struct AstValue Value_t;
+typedef struct AstNode Node_t;
+typedef struct Context Context_t;
+
+Value_t eval_plus(Value_t lhs, Value_t rhs, Context_t* context) {
+    Value_t result;
+
+    if (lhs.type == V_INT && rhs.type == V_INT) {
+        result.type = V_INT;
+        result.int_value = lhs.int_value + rhs.int_value;
+    } else if (lhs.type == V_INT && rhs.type == V_FLOAT) {
+        result.type = V_FLOAT;
+        result.float_value = lhs.int_value + rhs.float_value;
+    } else if (lhs.type == V_FLOAT && rhs.type == V_INT) {
+        result.type = V_FLOAT;
+        result.float_value = lhs.float_value + rhs.int_value;
+    } else if (lhs.type == V_FLOAT && rhs.type == V_FLOAT) {
+        result.type = V_FLOAT;
+        result.float_value = lhs.float_value + rhs.float_value;
+    } else {
+        fprintf(stderr, "eval_error: incompatible types: %d and %d\n", lhs.type, rhs.type);
+        exit(1);
+    }
+
+    return result;
+}
+
+Value_t eval_binop(Binop_t op, Node_t* lhs, Node_t* rhs, Context_t* context) {
+    switch (op) {
+        case TOK_PLUS:
+            return eval_plus(eval(lhs, context), eval(rhs, context), context);
+        default:
+            fprintf(stderr, "eval_error: unknown binop type: %d\n", op);
+            exit(1);
+    };
+}
+
+struct AstValue eval(struct AstNode* node, struct Context* context) {
+    switch (node->type) {
+        case AST_LITERAL:
+            return node->value;
+        case AST_BINOP:
+            return eval_binop(node->binop_type, node->lhs, node->rhs, context);
+        default:
+            fprintf(stderr, "error: unknown AST node type: %d\n", node->type);
+            exit(1);
+    };
+}

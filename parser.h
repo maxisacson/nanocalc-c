@@ -47,7 +47,9 @@ struct Parser {
     struct Token* tok;
 };
 
-const char* ast_node_to_str(struct AstNode node);
+const char* ast_node_to_str(struct AstNode* node);
+const char* ast_value_to_str(struct AstValue* value);
+const char* binop_type_to_str(enum TokenType binop_type);
 
 void parse_atom(struct Parser* parser, struct AstNode* node);
 void parse_expr(struct Parser* parser, struct AstNode* node);

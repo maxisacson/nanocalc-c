@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "token.h"
+#include "lexer.h"
 
 bool tok_is_keyword(const char* str) {
 #define X(x)                    \
@@ -51,19 +52,7 @@ enum TokenType tok_cmd_to_tt(const char* str) {
 }
 
 const char* tok_to_str(struct Token t) {
-    const char* tt;
-
-    switch (t.type) {
-#define X(x)     \
-    case x:      \
-        tt = #x; \
-        break;
-        TOKEN_TYPES
-#undef X
-        default:
-            fprintf(stderr, "token_error: unknown token type: %d\n", t.type);
-            exit(1);
-    }
+    const char* tt = tok_type_to_str(t.type);
 
     char* buf = malloc(256);
     if (t.value) {
@@ -72,6 +61,24 @@ const char* tok_to_str(struct Token t) {
         sprintf(buf, "%s", tt);
     }
     return buf;
+}
+
+const char* tok_type_to_str(enum TokenType tok_type) {
+    const char* tt;
+
+    switch (tok_type) {
+#define X(x)     \
+    case x:      \
+        tt = #x; \
+        break;
+        TOKEN_TYPES
+#undef X
+        default:
+            fprintf(stderr, "token_error: unknown token type: %d\n", tok_type);
+            exit(1);
+    }
+
+    return tt;
 }
 
 // 'space': \s -> skip
