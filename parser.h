@@ -8,6 +8,8 @@ enum NodeType {
     AST_LITERAL,
     AST_BINOP,
     AST_UNOP,
+    AST_IDENTIFIER,
+    AST_ASSIGNMENT,
 };
 
 struct NcInteger {
@@ -19,8 +21,10 @@ struct NcFloat {
 };
 
 enum ValueType {
+    V_NIL,
     V_INT,
     V_FLOAT,
+    V_STRING,
 };
 
 struct AstValue {
@@ -28,21 +32,38 @@ struct AstValue {
     union {
         long long int int_value;
         double float_value;
+        const char* string_value;
     };
 };
 
 struct AstNode {
     enum NodeType type;
     union {
+        // AST_LITERAL
         struct AstValue value;
+
+        // AST_BINOP
         struct {
             enum TokenType binop_type;
             struct AstNode* lhs;
             struct AstNode* rhs;
         };
+
+        // AST_UNOP
         struct {
             enum TokenType unop_type;
             struct AstNode* node;
+        };
+
+        // AST_IDENTIFIER
+        struct {
+            const char* name;
+        };
+
+        // AST_ASSIGNMENT
+        struct {
+            struct AstNode* ident;
+            struct AstNode* rvalue;
         };
     };
 };

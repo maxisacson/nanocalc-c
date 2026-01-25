@@ -29,7 +29,13 @@ int main(int argc, const char* argv[]) {
 
     printf("%s\n", ast_node_to_str(root));
 
-    struct AstValue result = eval(root, NULL);
+    struct Context context = new_context(NULL);
+
+    struct AstValue val = {.type=V_INT, .int_value = 42};
+    set_value(&context, "x", val);
+
+    struct AstValue result = eval(root, &context);
+
     const char* out = ast_value_to_str(&result);
     printf("%s\n", out);
 

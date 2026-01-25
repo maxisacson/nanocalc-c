@@ -39,11 +39,19 @@ end: ';' | 'eol'
 
 #include "parser.h"
 #include <stdlib.h>
+#include <string.h>
 #include "lexer.h"
 
 typedef struct AstNode Node_t;
 
 size_t node_count = 0;
+
+#define expect(token_type)                                                                       \
+    if (parser->tok->type != (token_type)) {                                                     \
+        fprintf(stderr, "syntax_error: expected %s but got %s\n", tok_type_to_str((token_type)), \
+                tok_type_to_str(parser->tok->type));                                             \
+        exit(1);                                                                                 \
+    }
 
 void draw_ast(Node_t* root) {
     Node_t** queue = malloc(node_count * sizeof(Node_t*));
@@ -67,6 +75,16 @@ void draw_ast(Node_t* root) {
                 fprintf(out, "v_%p -- v_%p\n", n, n->rhs);
                 queue[i++] = n->lhs;
                 queue[i++] = n->rhs;
+            } break;
+            case AST_IDENTIFIER: {
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, n->name);
+            } break;
+            case AST_ASSIGNMENT: {
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, "=");
+                fprintf(out, "v_%p -- v_%p\n", n, n->ident);
+                fprintf(out, "v_%p -- v_%p\n", n, n->rvalue);
+                queue[i++] = n->ident;
+                queue[i++] = n->rvalue;
             } break;
             default:
                 fprintf(stderr, "error: %s: unknown AST node type: %d\n", __PRETTY_FUNCTION__, root->type);
@@ -99,8 +117,17 @@ const char* ast_node_to_str(struct AstNode* node) {
             const char* op = binop_type_to_str(node->unop_type);
             sprintf(buf, "(unop%s %s)", op, n);
         } break;
+        case AST_IDENTIFIER: {
+            const char* name = node->name;
+            sprintf(buf, "(identifier %s)", name);
+        } break;
+        case AST_ASSIGNMENT: {
+            const char* ident = ast_node_to_str(node->ident);
+            const char* rvalue = ast_node_to_str(node->rvalue);
+            sprintf(buf, "(= %s %s)", ident, rvalue);
+        } break;
         default:
-            fprintf(stderr, "error: unknown AST node type: %d\n", node->type);
+            fprintf(stderr, "error: %s: unknown AST node type: %d\n", __PRETTY_FUNCTION__, node->type);
             exit(1);
     };
 
@@ -108,17 +135,29 @@ const char* ast_node_to_str(struct AstNode* node) {
 }
 
 const char* ast_value_to_str(struct AstValue* value) {
-    char* buf = malloc(128);
+    const size_t BUF_SIZE = 128;
+    char* buf = calloc(BUF_SIZE, 0);
 
     switch (value->type) {
+        case V_NIL:
+            sprintf(buf, "nil");
+            break;
         case V_INT:
             sprintf(buf, "%lld", value->int_value);
             break;
         case V_FLOAT:
             sprintf(buf, "%f", value->float_value);
             break;
+        case V_STRING: {
+            size_t len = strlen(value->string_value);
+            if (len >= BUF_SIZE) {
+                buf = realloc(buf, len + 1);
+                buf[len] = 0;
+            }
+            sprintf(buf, "%s", value->string_value);
+        } break;
         default:
-            fprintf(stderr, "error: unknown value type: %d\n", value->type);
+            fprintf(stderr, "error: %s: unknown value type: %d\n", __PRETTY_FUNCTION__, value->type);
             exit(1);
     }
 
@@ -160,10 +199,6 @@ const char* binop_type_to_str(enum TokenType binop_type) {
 struct AstNode* new_node() {
     struct AstNode* node = malloc(sizeof(struct AstNode));
     return node;
-}
-
-void syntax_error(const char* msg) {
-    fprintf(stderr, "syntax_error: %s\n", msg);
 }
 
 void parse_expr(struct Parser* parser, struct AstNode* node) {
@@ -235,8 +270,40 @@ void parse_factor(struct Parser* parser, struct AstNode* node) {
     }
 }
 
+void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
+    switch (parser->tok->type) {
+        case TOK_EQ: {
+            Node_t* lhs = new_node();
+            *lhs = *node;
+            node->ident = lhs;
+            node->type = AST_ASSIGNMENT;
+            parser->tok++;
+            node->rvalue = new_node();
+            parse_expr(parser, node->rvalue);
+        } break;
+        case TOK_LPAREN: {
+        } break;
+        case TOK_LBRACKET: {
+        } break;
+        default:
+            break;
+    }
+}
+
 void parse_atom(struct Parser* parser, struct AstNode* node) {
     switch (parser->tok->type) {
+        case TOK_IDENTIFIER: {
+            node->type = AST_IDENTIFIER;
+            node->name = parser->tok->value;
+            parser->tok++;
+            parse_atom_ident_tail(parser, node);
+        } break;
+        case TOK_LPAREN: {
+            parser->tok++;
+            parse_expr(parser, node);
+            expect(TOK_RPAREN);
+            parser->tok++;
+        } break;
         case TOK_INTEGER: {
             node->type = AST_LITERAL;
             node->value.type = V_INT;
@@ -249,8 +316,14 @@ void parse_atom(struct Parser* parser, struct AstNode* node) {
             node->value.float_value = atof(parser->tok->value);
             parser->tok++;
         } break;
+        case TOK_STRING: {
+            node->type = AST_LITERAL;
+            node->value.type = V_STRING;
+            node->value.string_value = parser->tok->value;
+            parser->tok++;
+        } break;
         default:
-            fprintf(stderr, "syntax_error: unexpected token: %s", tok_to_str(*parser->tok));
+            fprintf(stderr, "syntax_error: unexpected token: %s\n", tok_to_str(*parser->tok));
             exit(1);
     };
 }
