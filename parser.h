@@ -52,9 +52,12 @@ struct Parser {
     struct Token* tok;
 };
 
+void draw_ast(struct AstNode* root);
 const char* ast_node_to_str(struct AstNode* node);
 const char* ast_value_to_str(struct AstValue* value);
 const char* binop_type_to_str(enum TokenType binop_type);
+
+struct AstNode* new_node();
 
 void parse(struct Parser* parser, struct AstNode* node);
 void parse_atom(struct Parser* parser, struct AstNode* node);

@@ -41,6 +41,45 @@ end: ';' | 'eol'
 #include <stdlib.h>
 #include "lexer.h"
 
+typedef struct AstNode Node_t;
+
+size_t node_count = 0;
+
+void draw_ast(Node_t* root) {
+    Node_t** queue = malloc(node_count * sizeof(Node_t*));
+
+    size_t i = 0;
+    queue[i++] = root;
+
+    FILE* out = fopen("ast.dot", "w");
+    fprintf(out, "graph {\n");
+
+    Node_t* n;
+    while (i > 0) {
+        n = queue[--i];
+        switch (n->type) {
+            case AST_LITERAL:
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, ast_value_to_str(&n->value));
+                break;
+            case AST_BINOP: {
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, binop_type_to_str(n->binop_type));
+                fprintf(out, "v_%p -- v_%p\n", n, n->lhs);
+                fprintf(out, "v_%p -- v_%p\n", n, n->rhs);
+                queue[i++] = n->lhs;
+                queue[i++] = n->rhs;
+            } break;
+            default:
+                fprintf(stderr, "error: %s: unknown AST node type: %d\n", __PRETTY_FUNCTION__, root->type);
+                exit(1);
+        };
+    }
+
+    fprintf(out, "}\n");
+    fclose(out);
+
+    system("dot -Tsvg -oast.svg ast.dot");
+}
+
 const char* ast_node_to_str(struct AstNode* node) {
     char* buf = malloc(128);
 
@@ -118,8 +157,9 @@ const char* binop_type_to_str(enum TokenType binop_type) {
     }
 }
 
-static struct AstNode* new_node() {
-    return malloc(sizeof(struct AstNode));
+struct AstNode* new_node() {
+    struct AstNode* node = malloc(sizeof(struct AstNode));
+    return node;
 }
 
 void syntax_error(const char* msg) {
@@ -133,7 +173,6 @@ void parse_expr(struct Parser* parser, struct AstNode* node) {
 void parse_sum(struct Parser* parser, struct AstNode* node) {
     parse_term(parser, node);
 
-    struct AstNode* tmp = new_node();
     while (parser->tok->type == TOK_PLUS || parser->tok->type == TOK_MINUS) {
         enum TokenType op = parser->tok->type;
         parser->tok++;
@@ -154,7 +193,6 @@ void parse_sum(struct Parser* parser, struct AstNode* node) {
 void parse_term(struct Parser* parser, struct AstNode* node) {
     parse_factor(parser, node);
 
-    struct AstNode* tmp = new_node();
     while (parser->tok->type == TOK_STAR || parser->tok->type == TOK_FSLASH || parser->tok->type == TOK_PERC) {
         enum TokenType op = parser->tok->type;
         parser->tok++;
