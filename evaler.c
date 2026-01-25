@@ -50,6 +50,27 @@ Value_t eval_divide(Value_t lhs, Value_t rhs, Context_t* context) {
     return result;
 }
 
+Value_t eval_mod(Value_t lhs, Value_t rhs, Context_t* context) {
+    Value_t result;
+    if (lhs.type == V_INT && rhs.type == V_INT) {
+        result.type = V_INT;
+        result.int_value = lhs.int_value % rhs.int_value;
+    } else if (lhs.type == V_INT && rhs.type == V_FLOAT) {
+        result.type = V_FLOAT;
+        result.float_value = fmod((double)lhs.int_value, rhs.float_value);
+    } else if (lhs.type == V_FLOAT && rhs.type == V_INT) {
+        result.type = V_FLOAT;
+        result.float_value = fmod(lhs.float_value, (double)rhs.int_value);
+    } else if (lhs.type == V_FLOAT && rhs.type == V_FLOAT) {
+        result.type = V_FLOAT;
+        result.float_value = fmod(lhs.float_value, rhs.float_value);
+    } else {
+        fprintf(stderr, "eval_error: incompatible types: %d and %d\n", lhs.type, rhs.type);
+        exit(1);
+    }
+    return result;
+}
+
 Value_t eval_power(Value_t lhs, Value_t rhs, Context_t* context) {
     Value_t result;
 
@@ -95,6 +116,8 @@ Value_t eval_binop(Binop_t op, Node_t* lhs, Node_t* rhs, Context_t* context) {
             return eval_times(eval(lhs, context), eval(rhs, context), context);
         case TOK_FSLASH:
             return eval_divide(eval(lhs, context), eval(rhs, context), context);
+        case TOK_PERC:
+            return eval_mod(eval(lhs, context), eval(rhs, context), context);
         case TOK_POWER:
             return eval_power(eval(lhs, context), eval(rhs, context), context);
         default:
