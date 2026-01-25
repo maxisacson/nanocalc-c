@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 typedef enum TokenType Binop_t;
+typedef enum TokenType Unop_t;
 typedef struct AstValue Value_t;
 typedef struct AstNode Node_t;
 typedef struct Context Context_t;
@@ -72,6 +73,18 @@ Value_t eval_power(Value_t lhs, Value_t rhs, Context_t* context) {
     return result;
 }
 
+Value_t eval_unary_minus(Value_t val, Context_t* context) {
+    Value_t result;
+    if (val.type == V_INT) {
+        result.type = V_INT;
+        result.int_value = -val.int_value;
+    } else if (val.type == V_FLOAT) {
+        result.type = V_FLOAT;
+        result.float_value = -val.float_value;
+    }
+    return result;
+}
+
 Value_t eval_binop(Binop_t op, Node_t* lhs, Node_t* rhs, Context_t* context) {
     switch (op) {
         case TOK_PLUS:
@@ -90,14 +103,26 @@ Value_t eval_binop(Binop_t op, Node_t* lhs, Node_t* rhs, Context_t* context) {
     };
 }
 
+Value_t eval_unop(Unop_t op, Node_t* node, Context_t* context) {
+    switch (op) {
+        case TOK_MINUS:
+            return eval_unary_minus(eval(node, context), context);
+        default:
+            fprintf(stderr, "eval_error: unknown unop type: %d\n", op);
+            exit(1);
+    }
+}
+
 struct AstValue eval(struct AstNode* node, struct Context* context) {
     switch (node->type) {
         case AST_LITERAL:
             return node->value;
         case AST_BINOP:
             return eval_binop(node->binop_type, node->lhs, node->rhs, context);
+        case AST_UNOP:
+            return eval_unop(node->unop_type, node->node, context);
         default:
-            fprintf(stderr, "error: unknown AST node type: %d\n", node->type);
+            fprintf(stderr, "eval_error: unknown AST node type: %d\n", node->type);
             exit(1);
     };
 }

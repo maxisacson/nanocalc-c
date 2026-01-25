@@ -55,6 +55,11 @@ const char* ast_node_to_str(struct AstNode* node) {
             const char* op = binop_type_to_str(node->binop_type);
             sprintf(buf, "(binop%s %s %s)", op, lhs, rhs);
         } break;
+        case AST_UNOP: {
+            const char* n = ast_node_to_str(node->node);
+            const char* op = binop_type_to_str(node->unop_type);
+            sprintf(buf, "(unop%s %s)", op, n);
+        } break;
         default:
             fprintf(stderr, "error: unknown AST node type: %d\n", node->type);
             exit(1);
