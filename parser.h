@@ -7,6 +7,7 @@ enum NodeType {
     AST_PROG,
     AST_LITERAL,
     AST_BINOP,
+    AST_UNOP,
 };
 
 struct NcInteger {
@@ -39,6 +40,10 @@ struct AstNode {
             struct AstNode* lhs;
             struct AstNode* rhs;
         };
+        struct {
+            enum TokenType unop_type;
+            struct AstNode* node;
+        };
     };
 };
 
@@ -51,7 +56,11 @@ const char* ast_node_to_str(struct AstNode* node);
 const char* ast_value_to_str(struct AstValue* value);
 const char* binop_type_to_str(enum TokenType binop_type);
 
+void parse(struct Parser* parser, struct AstNode* node);
 void parse_atom(struct Parser* parser, struct AstNode* node);
 void parse_expr(struct Parser* parser, struct AstNode* node);
+void parse_sum(struct Parser* parser, struct AstNode* node);
+void parse_term(struct Parser* parser, struct AstNode* node);
+void parse_factor(struct Parser* parser, struct AstNode* node);
 
 #endif

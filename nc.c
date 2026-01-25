@@ -18,7 +18,7 @@ int main(int argc, const char* argv[]) {
     parser.tokens = tokens;
     parser.tok = tokens;
 
-    parse_expr(&parser, &root);
+    parse(&parser, &root);
 
     while (tokens->type != TOK_EOF) {
         printf("%s ", tok_to_str(*tokens++));

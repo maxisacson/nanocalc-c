@@ -122,7 +122,11 @@ void syntax_error(const char* msg) {
 }
 
 void parse_expr(struct Parser* parser, struct AstNode* node) {
-    parse_atom(parser, node);
+    parse_sum(parser, node);
+}
+
+void parse_sum(struct Parser* parser, struct AstNode* node) {
+    parse_term(parser, node);
 
     struct AstNode* tmp = new_node();
     while (parser->tok->type == TOK_PLUS || parser->tok->type == TOK_MINUS) {
@@ -130,7 +134,7 @@ void parse_expr(struct Parser* parser, struct AstNode* node) {
         parser->tok++;
 
         struct AstNode* rhs = new_node();
-        parse_atom(parser, rhs);
+        parse_term(parser, rhs);
 
         struct AstNode* lhs = new_node();
         *lhs = *node;
@@ -139,6 +143,52 @@ void parse_expr(struct Parser* parser, struct AstNode* node) {
         node->binop_type = op;
         node->lhs = lhs;
         node->rhs = rhs;
+    }
+}
+
+void parse_term(struct Parser* parser, struct AstNode* node) {
+    parse_factor(parser, node);
+
+    struct AstNode* tmp = new_node();
+    while (parser->tok->type == TOK_STAR || parser->tok->type == TOK_FSLASH || parser->tok->type == TOK_PERC) {
+        enum TokenType op = parser->tok->type;
+        parser->tok++;
+
+        struct AstNode* rhs = new_node();
+        parse_factor(parser, rhs);
+
+        struct AstNode* lhs = new_node();
+        *lhs = *node;
+
+        node->type = AST_BINOP;
+        node->binop_type = op;
+        node->lhs = lhs;
+        node->rhs = rhs;
+    }
+}
+
+void parse_factor(struct Parser* parser, struct AstNode* node) {
+    if (parser->tok->type == TOK_MINUS || parser->tok->type == TOK_HASH) {
+        node->type = AST_UNOP;
+        node->unop_type = parser->tok->type;
+        parser->tok++;
+        node->node = new_node();
+        parse_factor(parser, node->node);
+
+        return;
+    }
+
+    parse_atom(parser, node);
+
+    if (parser->tok->type == TOK_POWER) {
+        struct AstNode* lhs = new_node();
+        *lhs = *node;
+        node->type = AST_BINOP;
+        node->binop_type = parser->tok->type;
+        node->lhs = lhs;
+        parser->tok++;
+        node->rhs = new_node();
+        parse_factor(parser, node->rhs);
     }
 }
 
@@ -160,4 +210,8 @@ void parse_atom(struct Parser* parser, struct AstNode* node) {
             fprintf(stderr, "syntax_error: unexpected token: %s", tok_to_str(*parser->tok));
             exit(1);
     };
+}
+
+void parse(struct Parser* parser, struct AstNode* node) {
+    parse_expr(parser, node);
 }

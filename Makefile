@@ -1,13 +1,16 @@
 CC=gcc
-CFLAGS_DBG=-Wall -Wextra -g
-CFLAGS=-Wall -Wextra -Werror -O3
+CFLAGS_COMMON=-Wall -Wextra
+CFLAGS_DBG=$(CFLAGS_COMMON) -g
+CFLAGS=$(CFLAGS_COMMON) -Werror -O3
+LIBS=-lm
+LDFLAGS=
 PROG=nc
 
 debug: nc.c lexer.c parser.c evaler.c
-	$(CC) $(CFLAGS_DBG) $^ -o$(PROG)
+	$(CC) $(CFLAGS_DBG) $(LIBS) $(LDFLAGS) $^ -o$(PROG)
 
 release: nc.c lexer.c parser.c evaler.c
-	$(CC) $(CFLAGS) $^ -o$(PROG)
+	$(CC) $(CFLAGS) $(LIBS) $(LDFLAGS) $^ -o$(PROG)
 
 .PHONY: clean
 clean:
