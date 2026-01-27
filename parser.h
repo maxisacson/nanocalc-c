@@ -3,13 +3,19 @@
 
 #include "token.h"
 
+#define NODE_TYPES    \
+    X(AST_PROG)       \
+    X(AST_LITERAL)    \
+    X(AST_BINOP)      \
+    X(AST_UNOP)       \
+    X(AST_IDENTIFIER) \
+    X(AST_ASSIGNMENT) \
+    X(AST_PROGRAM)
+
 enum NodeType {
-    AST_PROG,
-    AST_LITERAL,
-    AST_BINOP,
-    AST_UNOP,
-    AST_IDENTIFIER,
-    AST_ASSIGNMENT,
+#define X(x) x,
+    NODE_TYPES
+#undef X
 };
 
 struct NcInteger {
@@ -65,6 +71,12 @@ struct AstNode {
             struct AstNode* ident;
             struct AstNode* rvalue;
         };
+
+        // AST_PROGRAM
+        struct {
+            struct AstNode** stmnts;
+            size_t stmnts_count;
+        };
     };
 };
 
@@ -76,15 +88,19 @@ struct Parser {
 void draw_ast(struct AstNode* root);
 const char* ast_node_to_str(struct AstNode* node);
 const char* ast_value_to_str(struct AstValue* value);
+const char* node_type_to_str(enum NodeType node_type);
 const char* binop_type_to_str(enum TokenType binop_type);
 
 struct AstNode* new_node();
 
 void parse(struct Parser* parser, struct AstNode* node);
-void parse_atom(struct Parser* parser, struct AstNode* node);
+
+void parse_program(struct Parser*, struct AstNode* node);
+void parse_stmnt(struct Parser*, struct AstNode* node);
 void parse_expr(struct Parser* parser, struct AstNode* node);
 void parse_sum(struct Parser* parser, struct AstNode* node);
 void parse_term(struct Parser* parser, struct AstNode* node);
 void parse_factor(struct Parser* parser, struct AstNode* node);
+void parse_atom(struct Parser* parser, struct AstNode* node);
 
 #endif

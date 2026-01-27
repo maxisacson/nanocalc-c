@@ -53,6 +53,13 @@ size_t node_count = 0;
         exit(1);                                                                                 \
     }
 
+#define expect2(token_type1, token_type2)                                                               \
+    if (parser->tok->type != (token_type1) && parser->tok->type != (token_type2)) {                     \
+        fprintf(stderr, "syntax_error: expected %s or %s but got %s\n", tok_type_to_str((token_type1)), \
+                tok_type_to_str((token_type2)), tok_type_to_str(parser->tok->type));                    \
+        exit(1);                                                                                        \
+    }
+
 void draw_ast(Node_t* root) {
     Node_t** queue = malloc(node_count * sizeof(Node_t*));
 
@@ -86,8 +93,16 @@ void draw_ast(Node_t* root) {
                 queue[i++] = n->ident;
                 queue[i++] = n->rvalue;
             } break;
+            case AST_PROGRAM: {
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, "program");
+                for (size_t j = 0; j < n->stmnts_count; ++j) {
+                    fprintf(out, "v_%p -- v_%p\n", n, n->stmnts[j]);
+                    queue[i++] = n->stmnts[j];
+                }
+            } break;
             default:
-                fprintf(stderr, "error: %s: unknown AST node type: %d\n", __PRETTY_FUNCTION__, root->type);
+                fprintf(stderr, "error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
+                        node_type_to_str(root->type));
                 exit(1);
         };
     }
@@ -126,12 +141,33 @@ const char* ast_node_to_str(struct AstNode* node) {
             const char* rvalue = ast_node_to_str(node->rvalue);
             sprintf(buf, "(= %s %s)", ident, rvalue);
         } break;
+        case AST_PROGRAM: {
+            sprintf(buf, "(program");
+            for (size_t i = 0; i < node->stmnts_count; ++i) {
+                sprintf(buf, "%s %s", buf, ast_node_to_str(node->stmnts[i]));
+            }
+            sprintf(buf, "%s)", buf);
+        } break;
         default:
-            fprintf(stderr, "error: %s: unknown AST node type: %d\n", __PRETTY_FUNCTION__, node->type);
+            fprintf(stderr, "error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
+                    node_type_to_str(node->type));
             exit(1);
     };
 
     return buf;
+}
+
+const char* node_type_to_str(enum NodeType node_type) {
+    switch (node_type) {
+#define X(x) \
+    case x:  \
+        return #x;
+        NODE_TYPES
+#undef X
+        default:
+            fprintf(stderr, "error: unknown token type: %d\n", node_type);
+            exit(1);
+    }
 }
 
 const char* ast_value_to_str(struct AstValue* value) {
@@ -199,6 +235,47 @@ const char* binop_type_to_str(enum TokenType binop_type) {
 struct AstNode* new_node() {
     struct AstNode* node = malloc(sizeof(struct AstNode));
     return node;
+}
+
+void parse(struct Parser* parser, struct AstNode* node) {
+    parse_program(parser, node);
+}
+
+void parse_program(struct Parser* parser, struct AstNode* node) {
+    while (parser->tok->type == TOK_EOL) {
+        parser->tok++;
+    }
+    node->type = AST_PROGRAM;
+
+    size_t stmnts_cap = 128;
+    node->stmnts_count = 0;
+    node->stmnts = malloc(stmnts_cap * sizeof(Node_t*));
+
+    while (parser->tok->type != TOK_EOF) {
+        if (node->stmnts_count >= stmnts_cap) {
+            stmnts_cap *= 2;
+            node->stmnts = realloc(node->stmnts, stmnts_cap * sizeof(Node_t*));
+        }
+        node->stmnts[node->stmnts_count] = malloc(sizeof(Node_t));
+        parse_stmnt(parser, node->stmnts[node->stmnts_count]);
+        node->stmnts_count++;
+
+        if (parser->tok->type != TOK_EOF) {
+            expect2(TOK_SEMICOLON, TOK_EOL);
+        }
+
+        while (parser->tok->type == TOK_SEMICOLON || parser->tok->type == TOK_EOL) {
+            parser->tok++;
+        }
+    }
+
+    while (parser->tok->type == TOK_EOL) {
+        parser->tok++;
+    }
+}
+
+void parse_stmnt(struct Parser* parser, struct AstNode* node) {
+    parse_expr(parser, node);
 }
 
 void parse_expr(struct Parser* parser, struct AstNode* node) {
@@ -326,8 +403,4 @@ void parse_atom(struct Parser* parser, struct AstNode* node) {
             fprintf(stderr, "syntax_error: unexpected token: %s\n", tok_to_str(*parser->tok));
             exit(1);
     };
-}
-
-void parse(struct Parser* parser, struct AstNode* node) {
-    parse_expr(parser, node);
 }
