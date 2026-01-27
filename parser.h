@@ -19,14 +19,6 @@ enum NodeType {
 #undef X
 };
 
-struct NcInteger {
-    long long int value;
-};
-
-struct NcFloat {
-    double value;
-};
-
 #define VALUE_TYPES \
     X(V_NIL)        \
     X(V_INT)        \
