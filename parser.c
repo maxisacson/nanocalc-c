@@ -95,14 +95,21 @@ void draw_ast(Node_t* root) {
             } break;
             case AST_PROGRAM: {
                 fprintf(out, "v_%p[label=\"%s\"]\n", n, "program");
-                for (size_t j = 0; j < n->stmnts_count; ++j) {
+                for (size_t j = 0; j < n->stmnt_count; ++j) {
                     fprintf(out, "v_%p -- v_%p\n", n, n->stmnts[j]);
                     queue[i++] = n->stmnts[j];
                 }
             } break;
+            case AST_ITEMS: {
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, "items");
+                for (size_t j = 0; j < n->item_count; ++j) {
+                    fprintf(out, "v_%p -- v_%p\n", n, n->items[j]);
+                    queue[i++] = n->items[j];
+                }
+            } break;
             default:
                 fprintf(stderr, "error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
-                        node_type_to_str(root->type));
+                        node_type_to_str(n->type));
                 exit(1);
         };
     }
@@ -143,8 +150,15 @@ const char* ast_node_to_str(struct AstNode* node) {
         } break;
         case AST_PROGRAM: {
             sprintf(buf, "(program");
-            for (size_t i = 0; i < node->stmnts_count; ++i) {
+            for (size_t i = 0; i < node->stmnt_count; ++i) {
                 sprintf(buf, "%s %s", buf, ast_node_to_str(node->stmnts[i]));
+            }
+            sprintf(buf, "%s)", buf);
+        } break;
+        case AST_ITEMS: {
+            sprintf(buf, "(items");
+            for (size_t i = 0; i < node->item_count; ++i) {
+                sprintf(buf, "%s %s", buf, ast_node_to_str(node->items[i]));
             }
             sprintf(buf, "%s)", buf);
         } break;
@@ -191,6 +205,16 @@ const char* ast_value_to_str(struct AstValue* value) {
                 buf[len] = 0;
             }
             sprintf(buf, "%s", value->string_value);
+        } break;
+        case V_LIST: {
+            sprintf(buf, "[");
+            for (size_t i = 0; i < value->list_size; ++i) {
+                if (i > 0) {
+                    sprintf(buf, "%s, ", buf);
+                }
+                sprintf(buf, "%s%s", buf, ast_value_to_str(value->list_value + i));
+            }
+            sprintf(buf, "%s]", buf);
         } break;
         default:
             fprintf(stderr, "error: %s: unknown value type: %d\n", __PRETTY_FUNCTION__, value->type);
@@ -248,17 +272,17 @@ void parse_program(struct Parser* parser, struct AstNode* node) {
     node->type = AST_PROGRAM;
 
     size_t stmnts_cap = 128;
-    node->stmnts_count = 0;
+    node->stmnt_count = 0;
     node->stmnts = malloc(stmnts_cap * sizeof(Node_t*));
 
     while (parser->tok->type != TOK_EOF) {
-        if (node->stmnts_count >= stmnts_cap) {
+        if (node->stmnt_count >= stmnts_cap) {
             stmnts_cap *= 2;
             node->stmnts = realloc(node->stmnts, stmnts_cap * sizeof(Node_t*));
         }
-        node->stmnts[node->stmnts_count] = malloc(sizeof(Node_t));
-        parse_stmnt(parser, node->stmnts[node->stmnts_count]);
-        node->stmnts_count++;
+        node->stmnts[node->stmnt_count] = malloc(sizeof(Node_t));
+        parse_stmnt(parser, node->stmnts[node->stmnt_count]);
+        node->stmnt_count++;
 
         if (parser->tok->type != TOK_EOF) {
             expect2(TOK_SEMICOLON, TOK_EOL);
@@ -367,6 +391,30 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
     }
 }
 
+void parse_items(struct Parser* parser, struct AstNode* node) {
+    node->type = AST_ITEMS;
+    size_t cap = 128;
+    node->items = malloc(cap * sizeof(Node_t*));
+    node->item_count = 0;
+
+    node->items[node->item_count] = malloc(sizeof(Node_t));
+    parse_expr(parser, node->items[node->item_count]);
+    node->item_count++;
+
+    while (parser->tok->type == TOK_COMMA) {
+        parser->tok++;
+
+        if (node->item_count >= cap) {
+            cap *= 2;
+            node->items = realloc(node->items, cap * sizeof(Node_t*));
+        }
+
+        node->items[node->item_count] = malloc(sizeof(Node_t));
+        parse_expr(parser, node->items[node->item_count]);
+        node->item_count++;
+    }
+}
+
 void parse_atom(struct Parser* parser, struct AstNode* node) {
     switch (parser->tok->type) {
         case TOK_IDENTIFIER: {
@@ -379,6 +427,12 @@ void parse_atom(struct Parser* parser, struct AstNode* node) {
             parser->tok++;
             parse_expr(parser, node);
             expect(TOK_RPAREN);
+            parser->tok++;
+        } break;
+        case TOK_LBRACKET: {
+            parser->tok++;
+            parse_items(parser, node);
+            expect(TOK_RBRACKET);
             parser->tok++;
         } break;
         case TOK_INTEGER: {

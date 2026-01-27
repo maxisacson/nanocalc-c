@@ -194,11 +194,25 @@ Value_t eval_identifier(Context_t* context, const char* name) {
     return get_value(context, name);
 }
 
-Value_t eval_program(Context_t* context, Node_t** stmnts, size_t stmnts_count) {
+Value_t eval_program(Context_t* context, Node_t** stmnts, size_t stmnt_count) {
     Value_t result = NIL;
 
-    for (size_t i = 0; i < stmnts_count; ++i) {
+    for (size_t i = 0; i < stmnt_count; ++i) {
         result = eval(stmnts[i], context);
+    }
+
+    return result;
+}
+
+Value_t eval_items(Context_t* context, Node_t** items, size_t item_count) {
+    Value_t result = NIL;
+
+    result.type = V_LIST;
+    result.list_size = item_count;
+    result.list_value = malloc(item_count * sizeof(Value_t));
+
+    for (size_t i = 0; i < item_count; ++i) {
+        result.list_value[i] = eval(items[i], context);
     }
 
     return result;
@@ -217,9 +231,12 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
         case AST_ASSIGNMENT:
             return eval_assignment(context, node->ident->name, eval(node->rvalue, context));
         case AST_PROGRAM:
-            return eval_program(context, node->stmnts, node->stmnts_count);
+            return eval_program(context, node->stmnts, node->stmnt_count);
+        case AST_ITEMS:
+            return eval_items(context, node->items, node->item_count);
         default:
-            fprintf(stderr, "eval_error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(node->type));
+            fprintf(stderr, "eval_error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
+                    node_type_to_str(node->type));
             exit(1);
     };
 }

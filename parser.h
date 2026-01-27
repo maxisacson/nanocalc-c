@@ -10,7 +10,8 @@
     X(AST_UNOP)       \
     X(AST_IDENTIFIER) \
     X(AST_ASSIGNMENT) \
-    X(AST_PROGRAM)
+    X(AST_PROGRAM)    \
+    X(AST_ITEMS)
 
 enum NodeType {
 #define X(x) x,
@@ -26,11 +27,17 @@ struct NcFloat {
     double value;
 };
 
+#define VALUE_TYPES \
+    X(V_NIL)        \
+    X(V_INT)        \
+    X(V_FLOAT)      \
+    X(V_STRING) \
+    X(V_LIST)
+
 enum ValueType {
-    V_NIL,
-    V_INT,
-    V_FLOAT,
-    V_STRING,
+#define X(x) x,
+    VALUE_TYPES
+#undef X
 };
 
 struct AstValue {
@@ -39,6 +46,10 @@ struct AstValue {
         long long int int_value;
         double float_value;
         const char* string_value;
+        struct {
+            struct AstValue* list_value;
+            size_t list_size;
+        };
     };
 };
 
@@ -75,7 +86,13 @@ struct AstNode {
         // AST_PROGRAM
         struct {
             struct AstNode** stmnts;
-            size_t stmnts_count;
+            size_t stmnt_count;
+        };
+
+        // AST_ITEMS
+        struct {
+            struct AstNode** items;
+            size_t item_count;
         };
     };
 };
@@ -102,5 +119,6 @@ void parse_sum(struct Parser* parser, struct AstNode* node);
 void parse_term(struct Parser* parser, struct AstNode* node);
 void parse_factor(struct Parser* parser, struct AstNode* node);
 void parse_atom(struct Parser* parser, struct AstNode* node);
+void parse_items(struct Parser* parser, struct AstNode* node);
 
 #endif
