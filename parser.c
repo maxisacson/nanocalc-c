@@ -41,6 +41,7 @@ end: ';' | 'eol'
 #include <stdlib.h>
 #include <string.h>
 #include "lexer.h"
+#include "utils.h"
 
 typedef struct AstNode Node_t;
 
@@ -185,43 +186,38 @@ const char* node_type_to_str(enum NodeType node_type) {
 }
 
 const char* ast_value_to_str(struct AstValue* value) {
-    const size_t BUF_SIZE = 128;
-    char* buf = calloc(BUF_SIZE, 0);
+    String s = {};
+    string_reserve(&s, 128);
 
     switch (value->type) {
         case V_NIL:
-            sprintf(buf, "nil");
+            sprintf(s.data, "nil");
             break;
         case V_INT:
-            sprintf(buf, "%lld", value->int_value);
+            sprintf(s.data, "%lld", value->int_value);
             break;
         case V_FLOAT:
-            sprintf(buf, "%f", value->float_value);
+            sprintf(s.data, "%f", value->float_value);
             break;
         case V_STRING: {
-            size_t len = strlen(value->string_value);
-            if (len >= BUF_SIZE) {
-                buf = realloc(buf, len + 1);
-                buf[len] = 0;
-            }
-            sprintf(buf, "%s", value->string_value);
+            string_set(&s, value->string_value);
         } break;
         case V_LIST: {
-            sprintf(buf, "[");
+            string_set(&s, "[");
             for (size_t i = 0; i < value->list_size; ++i) {
                 if (i > 0) {
-                    sprintf(buf, "%s, ", buf);
+                    string_append(&s, ", ");
                 }
-                sprintf(buf, "%s%s", buf, ast_value_to_str(value->list_value + i));
+                string_append(&s, ast_value_to_str(value->list_value + i));
             }
-            sprintf(buf, "%s]", buf);
+            string_append(&s, "]");
         } break;
         default:
             fprintf(stderr, "error: %s: unknown value type: %d\n", __PRETTY_FUNCTION__, value->type);
             exit(1);
     }
 
-    return buf;
+    return s.data;
 }
 
 const char* binop_type_to_str(enum TokenType binop_type) {

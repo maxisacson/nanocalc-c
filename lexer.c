@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "token.h"
+#include "utils.h"
 #include "lexer.h"
 
 bool tok_is_keyword(const char* str) {
@@ -54,13 +55,14 @@ enum TokenType tok_cmd_to_tt(const char* str) {
 const char* tok_to_str(struct Token t) {
     const char* tt = tok_type_to_str(t.type);
 
-    char* buf = malloc(256);
+    String s = {};
     if (t.value) {
-        sprintf(buf, "%s(%s)", tt, t.value);
+        const char* strs[] = {tt, "(", t.value, ")"};
+        s = string_join("", strs, 4);
     } else {
-        sprintf(buf, "%s", tt);
+        string_set(&s, tt);
     }
-    return buf;
+    return s.data;
 }
 
 const char* tok_type_to_str(enum TokenType tok_type) {
@@ -111,71 +113,64 @@ int ta_append(struct TokenArray* arr, enum TokenType type, const char* value) {
 }
 
 void tok_number(struct TokenArray* arr, const char** ptr) {
-    char* value = malloc(512);
-    char* in = value;
+    String value = {};
 
     enum TokenType tt = TOK_INTEGER;
 
     while ('0' <= **ptr && **ptr <= '9') {
-        *in++ = *(*ptr)++;
+        string_append_ch(&value, *(*ptr)++);
     }
 
     if (**ptr == '.') {
-        *in++ = *(*ptr)++;
+        string_append_ch(&value, *(*ptr)++);
         tt = TOK_FLOAT;
     }
 
     while ('0' <= **ptr && **ptr <= '9') {
-        *in++ = *(*ptr)++;
+        string_append_ch(&value, *(*ptr)++);
     }
 
     if (**ptr == 'e' || **ptr == 'E') {
-        *in++ = *(*ptr)++;
+        string_append_ch(&value, *(*ptr)++);
         if (**ptr == '-') {
-            *in++ = *(*ptr)++;
+            string_append_ch(&value, *(*ptr)++);
         }
         tt = TOK_FLOAT;
     }
 
     while ('0' <= **ptr && **ptr <= '9') {
-        *in++ = *(*ptr)++;
+        string_append_ch(&value, *(*ptr)++);
     }
 
-    *in = 0;
-
-    ta_append(arr, tt, value);
+    ta_append(arr, tt, value.data);
 }
 
 void tok_ident_or_keyword(struct TokenArray* arr, const char** ptr) {
-    char* value = malloc(512);
-    char* in = value;
+    String value = {};
 
     while (isalnum(**ptr) || **ptr == '_') {
-        *in++ = *(*ptr)++;
+        string_append_ch(&value, *(*ptr)++);
     }
-    *in = 0;
 
-    if (tok_is_keyword(value)) {
-        ta_append(arr, tok_kw_to_tt(value), 0);
-    } else if (tok_is_command(value)) {
-        ta_append(arr, tok_cmd_to_tt(value), 0);
+    if (tok_is_keyword(value.data)) {
+        ta_append(arr, tok_kw_to_tt(value.data), 0);
+    } else if (tok_is_command(value.data)) {
+        ta_append(arr, tok_cmd_to_tt(value.data), 0);
     } else {
-        ta_append(arr, TOK_IDENTIFIER, value);
+        ta_append(arr, TOK_IDENTIFIER, value.data);
     }
 }
 
 void tok_string(struct TokenArray* arr, const char** ptr) {
-    char* value = malloc(512);
-    char* in = value;
+    String value = {};
 
     ++*ptr;
     while (**ptr && **ptr != '"') {
-        *in++ = *(*ptr)++;
+        string_append_ch(&value, *(*ptr)++);
     }
     ++*ptr;
-    *in = 0;
 
-    ta_append(arr, TOK_STRING, value);
+    ta_append(arr, TOK_STRING, value.data);
 }
 
 int tokenize(const char* string, struct Token* tokens[]) {

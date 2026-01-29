@@ -23,7 +23,7 @@ enum NodeType {
     X(V_NIL)        \
     X(V_INT)        \
     X(V_FLOAT)      \
-    X(V_STRING) \
+    X(V_STRING)     \
     X(V_LIST)
 
 enum ValueType {
