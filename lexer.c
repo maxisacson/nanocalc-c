@@ -184,8 +184,8 @@ int tokenize(const char* string, struct Token* tokens[]) {
 
         switch (*s) {
             case ' ':
-                continue;
                 ++s;
+                continue;
             case '\n':
                 ta_append(&arr, TOK_EOL, 0);
                 ++s;
