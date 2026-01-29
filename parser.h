@@ -11,7 +11,9 @@
     X(AST_IDENTIFIER) \
     X(AST_ASSIGNMENT) \
     X(AST_PROGRAM)    \
-    X(AST_ITEMS)
+    X(AST_ITEMS)      \
+    X(AST_FCALL)      \
+    X(AST_FDEF)
 
 enum NodeType {
 #define X(x) x,
@@ -24,7 +26,8 @@ enum NodeType {
     X(V_INT)        \
     X(V_FLOAT)      \
     X(V_STRING)     \
-    X(V_LIST)
+    X(V_LIST)       \
+    X(V_CALLABLE)
 
 enum ValueType {
 #define X(x) x,
@@ -35,12 +38,24 @@ enum ValueType {
 struct AstValue {
     enum ValueType type;
     union {
+        // V_INT
         long long int int_value;
+
+        // V_FLOAT
         double float_value;
+
+        // V_STRING
         const char* string_value;
+
+        // V_LIST
         struct {
             struct AstValue* list_value;
             size_t list_size;
+        };
+
+        // V_CALLABLE
+        struct {
+            void* data;
         };
     };
 };
@@ -85,6 +100,15 @@ struct AstNode {
         struct {
             struct AstNode** items;
             size_t item_count;
+        };
+
+        // AST_FCALL / AST_FDEF
+        struct {
+            const char* fname;
+            struct AstNode* params;
+
+            // AST_FDEF
+            struct AstNode* fbody;
         };
     };
 };

@@ -4,6 +4,18 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+#define error(...)                          \
+    fprintf(stderr, "error: " __VA_ARGS__); \
+    exit(1)
+
+#define syntax_error(...)                          \
+    fprintf(stderr, "syntax_error: " __VA_ARGS__); \
+    exit(1)
+
+#define eval_error(...)                          \
+    fprintf(stderr, "eval_error: " __VA_ARGS__); \
+    exit(1)
+
 typedef struct {
     char* data;
     size_t size;

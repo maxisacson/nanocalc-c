@@ -27,7 +27,7 @@ int main(int argc, const char* argv[]) {
     printf("%s ", tok_to_str(*tokens++));
     printf("\n");
 
-    printf("%s\n", ast_node_to_str(root));
+    // printf("%s\n", ast_node_to_str(root));
 
     struct Context context = new_context(NULL);
 
@@ -39,7 +39,7 @@ int main(int argc, const char* argv[]) {
     const char* out = ast_value_to_str(&result);
     printf("%s\n", out);
 
-    draw_ast(root);
+    // draw_ast(root);
 
     return 0;
 }

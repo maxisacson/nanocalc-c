@@ -47,18 +47,15 @@ typedef struct AstNode Node_t;
 
 size_t node_count = 0;
 
-#define expect(token_type)                                                                       \
-    if (parser->tok->type != (token_type)) {                                                     \
-        fprintf(stderr, "syntax_error: expected %s but got %s\n", tok_type_to_str((token_type)), \
-                tok_type_to_str(parser->tok->type));                                             \
-        exit(1);                                                                                 \
+#define expect(token_type)                                                                                           \
+    if (parser->tok->type != (token_type)) {                                                                         \
+        syntax_error("expected %s but got %s\n", tok_type_to_str((token_type)), tok_type_to_str(parser->tok->type)); \
     }
 
-#define expect2(token_type1, token_type2)                                                               \
-    if (parser->tok->type != (token_type1) && parser->tok->type != (token_type2)) {                     \
-        fprintf(stderr, "syntax_error: expected %s or %s but got %s\n", tok_type_to_str((token_type1)), \
-                tok_type_to_str((token_type2)), tok_type_to_str(parser->tok->type));                    \
-        exit(1);                                                                                        \
+#define expect2(token_type1, token_type2)                                                                              \
+    if (parser->tok->type != (token_type1) && parser->tok->type != (token_type2)) {                                    \
+        syntax_error("expected %s or %s but got %s\n", tok_type_to_str((token_type1)), tok_type_to_str((token_type2)), \
+                     tok_type_to_str(parser->tok->type));                                                              \
     }
 
 void draw_ast(Node_t* root) {
@@ -108,10 +105,15 @@ void draw_ast(Node_t* root) {
                     queue[i++] = n->items[j];
                 }
             } break;
+            case AST_FCALL: {
+                fprintf(out, "v_%p[label=\"%s()\"]\n", n, n->fname);
+                for (size_t j = 0; j < n->params->item_count; ++j) {
+                    fprintf(out, "v_%p -- v_%p\n", n, n->params->items[j]);
+                    queue[i++] = n->params->items[j];
+                }
+            } break;
             default:
-                fprintf(stderr, "error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
-                        node_type_to_str(n->type));
-                exit(1);
+                error("%s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(n->type));
         };
     }
 
@@ -163,10 +165,15 @@ const char* ast_node_to_str(struct AstNode* node) {
             }
             sprintf(buf, "%s)", buf);
         } break;
+        case AST_FCALL: {
+            sprintf(buf, "(%s", node->fname);
+            for (size_t i = 0; i < node->params->item_count; ++i) {
+                sprintf(buf, "%s %s", buf, ast_node_to_str(node->params->items[i]));
+            }
+            sprintf(buf, "%s)", buf);
+        } break;
         default:
-            fprintf(stderr, "error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
-                    node_type_to_str(node->type));
-            exit(1);
+            error("%s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(node->type));
     };
 
     return buf;
@@ -379,6 +386,33 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
             parse_expr(parser, node->rvalue);
         } break;
         case TOK_LPAREN: {
+            parser->tok++;
+
+            node->type = AST_FCALL;
+            node->fname = node->name;
+            node->params = new_node();
+            node->params->item_count = 0;
+
+            if (parser->tok->type != TOK_RPAREN) {
+                parse_items(parser, node->params);
+            }
+
+            expect(TOK_RPAREN);
+            parser->tok++;
+
+            if (parser->tok->type == TOK_EQ) {
+                parser->tok++;
+
+                node->type = AST_FDEF;
+                for (size_t ip = 0; ip < node->params->item_count; ++ip) {
+                    if (node->params->items[ip]->type != AST_IDENTIFIER) {
+                        syntax_error("expected identifier but got %s\n",
+                                     node_type_to_str(node->params->items[ip]->type));
+                    }
+                }
+                node->fbody = new_node();
+                parse_expr(parser, node->fbody);
+            }
         } break;
         case TOK_LBRACKET: {
         } break;
@@ -450,7 +484,6 @@ void parse_atom(struct Parser* parser, struct AstNode* node) {
             parser->tok++;
         } break;
         default:
-            fprintf(stderr, "syntax_error: unexpected token: %s\n", tok_to_str(*parser->tok));
-            exit(1);
+            syntax_error("unexpected token: %s\n", tok_to_str(*parser->tok));
     };
 }

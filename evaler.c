@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include "utils.h"
 
 typedef enum TokenType Binop_t;
 typedef enum TokenType Unop_t;
@@ -218,6 +219,53 @@ Value_t eval_items(Context_t* context, Node_t** items, size_t item_count) {
     return result;
 }
 
+struct EvalFunc {
+    Context_t* context;
+    const char** params;
+    size_t param_count;
+    Node_t* body;
+};
+
+Value_t eval_fcall(Context_t* context, const char* fname, Node_t* params) {
+    Value_t callable = get_value(context, fname);
+    struct EvalFunc* f = callable.data;
+
+    struct Context local = new_context(f->context);
+
+    Value_t plist = eval(params, context);
+
+    for (size_t ip = 0; ip < params->item_count; ++ip) {
+        set_value(&local, f->params[ip], plist.list_value[ip]);
+    }
+
+    Value_t result = eval(f->body, &local);
+
+    return result;
+}
+
+Value_t eval_fdef(Context_t* context, const char* fname, Node_t* params, Node_t* body) {
+    const char** pnames = malloc(params->item_count * sizeof(const char*));
+
+    for (size_t ip = 0; ip < params->item_count; ++ip) {
+        if (params->items[ip]->type != AST_IDENTIFIER) {
+            eval_error("expected identifier but got %s\n", node_type_to_str(params->items[ip]->type));
+        }
+        pnames[ip] = params->items[ip]->name;
+    }
+
+    struct EvalFunc* ef = malloc(sizeof(struct EvalFunc));
+    ef->context = context;
+    ef->params = pnames;
+    ef->param_count = params->item_count;
+    ef->body = body;
+
+    struct AstValue callable = {.data = ef};
+
+    set_value(context, fname, callable);
+
+    return NIL;
+}
+
 struct AstValue eval(struct AstNode* node, struct Context* context) {
     switch (node->type) {
         case AST_LITERAL:
@@ -234,6 +282,10 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
             return eval_program(context, node->stmnts, node->stmnt_count);
         case AST_ITEMS:
             return eval_items(context, node->items, node->item_count);
+        case AST_FCALL:
+            return eval_fcall(context, node->fname, node->params);
+        case AST_FDEF:
+            return eval_fdef(context, node->fname, node->params, node->fbody);
         default:
             fprintf(stderr, "eval_error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
                     node_type_to_str(node->type));
