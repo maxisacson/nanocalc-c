@@ -1,17 +1,42 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "lexer.h"
 #include "parser.h"
 #include "evaler.h"
 
+#define BUFSIZE 4095 // pagesize - 1
+
+const char* read_file(FILE* fd) {
+    char buf[BUFSIZE];
+    size_t bytes;
+    size_t total = 0;
+    char* contents;
+    while ((bytes = fread(buf, 1, BUFSIZE, stdin)) > 0) {
+        if (total == 0) {
+            contents = malloc(bytes + 1);
+        } else {
+            contents = realloc(contents, total + bytes + 1);
+        }
+        memcpy(contents + total, buf, bytes);
+        total += bytes;
+    }
+    contents[total] = 0;
+    return contents;
+}
+
 int main(int argc, const char* argv[]) {
+    const char* text;
+
     if (argc < 2) {
-        exit(1);
+        text = read_file(stdin);
+    } else {
+        text = argv[1];
     }
 
     struct Token* tokens;
-    tokenize(argv[1], &tokens);
+    tokenize(text, &tokens);
 
     struct AstNode* root = new_node();
     struct Parser parser;
