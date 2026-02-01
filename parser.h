@@ -13,7 +13,8 @@
     X(AST_PROGRAM)    \
     X(AST_ITEMS)      \
     X(AST_FCALL)      \
-    X(AST_FDEF)
+    X(AST_FDEF)       \
+    X(AST_IDX)
 
 enum NodeType {
 #define X(x) x,
@@ -110,6 +111,12 @@ struct AstNode {
             // AST_FDEF
             struct AstNode* fbody;
         };
+
+        // AST_IDX
+        struct {
+            const char* lname;
+            struct AstNode* iexpr;
+        };
     };
 };
 
@@ -123,6 +130,7 @@ const char* ast_node_to_str(struct AstNode* node);
 const char* ast_value_to_str(struct AstValue* value);
 const char* node_type_to_str(enum NodeType node_type);
 const char* binop_type_to_str(enum TokenType binop_type);
+const char* value_type_to_str(enum ValueType value_type);
 
 struct AstNode* new_node();
 

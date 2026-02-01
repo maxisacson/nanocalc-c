@@ -192,6 +192,18 @@ const char* node_type_to_str(enum NodeType node_type) {
     }
 }
 
+const char* value_type_to_str(enum ValueType value_type) {
+    switch (value_type) {
+#define X(x) \
+    case x:  \
+        return #x;
+        VALUE_TYPES
+#undef X
+        default:
+            error("unknown value type: %d\n", value_type);
+    }
+}
+
 const char* ast_value_to_str(struct AstValue* value) {
     String s = {};
     string_reserve(&s, 128);
@@ -415,6 +427,26 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
             }
         } break;
         case TOK_LBRACKET: {
+            parser->tok++;
+
+            node->type = AST_IDX;
+            node->lname = node->name;
+            node->iexpr = new_node();
+
+            parse_expr(parser, node->iexpr);
+            expect(TOK_RBRACKET);
+            parser->tok++;
+
+            if (parser->tok->type == TOK_EQ) {
+                parser->tok++;
+
+                struct AstNode* tmp = new_node();
+                *tmp = *node;
+                node->type = AST_ASSIGNMENT;
+                node->ident = tmp;
+                node->rvalue = new_node();
+                parse_expr(parser, node->rvalue);
+            }
         } break;
         default:
             break;

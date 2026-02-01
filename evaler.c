@@ -171,8 +171,7 @@ Value_t eval_binop(Context_t* context, Binop_t op, Node_t* lhs, Node_t* rhs) {
         case TOK_POWER:
             return eval_power(eval(lhs, context), eval(rhs, context));
         default:
-            fprintf(stderr, "eval_error: unknown binop type: %d\n", op);
-            exit(1);
+            eval_error("unknown binop type: %d\n", op);
     };
 }
 
@@ -181,13 +180,26 @@ Value_t eval_unop(Context_t* context, Unop_t op, Node_t* node) {
         case TOK_MINUS:
             return eval_unary_minus(eval(node, context));
         default:
-            fprintf(stderr, "eval_error: unknown unop type: %d\n", op);
-            exit(1);
+            eval_error("unknown unop type: %d\n", op);
     }
 }
 
-Value_t eval_assignment(Context_t* context, const char* name, Value_t value) {
-    set_value(context, name, value);
+Value_t eval_assignment(Context_t* context, Node_t* ident, Value_t value) {
+    if (ident->type == AST_IDENTIFIER) {
+        set_value(context, ident->name, value);
+    } else if (ident->type == AST_IDX) {
+        Value_t list = get_value(context, ident->lname);
+        if (list.type == V_NIL) {
+            eval_error("did not find name in current context: %s\n", ident->lname);
+        }
+        Value_t idx = eval(ident->iexpr, context);
+        if (idx.type != V_INT) {
+            eval_error("cannot index using value type: %s\n", ident->lname);
+        }
+        list.list_value[idx.int_value] = value;
+    } else {
+        eval_error("unexpected lvalue type: %s\n", node_type_to_str(ident->type));
+    }
     return value;
 }
 
@@ -277,7 +289,7 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
         case AST_IDENTIFIER:
             return eval_identifier(context, node->name);
         case AST_ASSIGNMENT:
-            return eval_assignment(context, node->ident->name, eval(node->rvalue, context));
+            return eval_assignment(context, node->ident, eval(node->rvalue, context));
         case AST_PROGRAM:
             return eval_program(context, node->stmnts, node->stmnt_count);
         case AST_ITEMS:
