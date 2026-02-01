@@ -19,6 +19,13 @@ struct Context {
     struct Map map;
 };
 
+struct EvalFunc {
+    struct Context* context;
+    const char** params;
+    size_t param_count;
+    struct AstNode* body;
+};
+
 struct Map new_map();
 struct Context new_context(struct Context* parent);
 

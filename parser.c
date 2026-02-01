@@ -118,6 +118,25 @@ void draw_ast(Node_t* root) {
                     queue[i++] = n->params->items[j];
                 }
             } break;
+            case AST_FDEF: {
+                fprintf(out, "v_%p[label=\"%s(", n, n->fname);
+                for (size_t j = 0; j < n->params->item_count; ++j) {
+                    if (j > 0) {
+                        fprintf(out, ", ");
+                    }
+                    fprintf(out, "%s", n->params->items[j]->name);
+                }
+                fprintf(out, ")\"]\n");
+                fprintf(out, "v_%p -- v_%p\n", n, n->fbody);
+                queue[i++] = n->fbody;
+            } break;
+            case AST_BLOCK: {
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, "block");
+                for (size_t j = 0; j < n->stmnt_count; ++j) {
+                    fprintf(out, "v_%p -- v_%p\n", n, n->stmnts[j]);
+                    queue[i++] = n->stmnts[j];
+                }
+            } break;
             default:
                 error("%s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(n->type));
         };

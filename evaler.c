@@ -231,13 +231,6 @@ Value_t eval_items(Context_t* context, Node_t** items, size_t item_count) {
     return result;
 }
 
-struct EvalFunc {
-    Context_t* context;
-    const char** params;
-    size_t param_count;
-    Node_t* body;
-};
-
 Value_t eval_fcall(Context_t* context, const char* fname, Node_t* params) {
     Value_t callable = get_value(context, fname);
     struct EvalFunc* f = callable.data;
