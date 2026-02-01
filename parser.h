@@ -14,7 +14,8 @@
     X(AST_ITEMS)      \
     X(AST_FCALL)      \
     X(AST_FDEF)       \
-    X(AST_IDX)
+    X(AST_IDX)        \
+    X(AST_BLOCK)
 
 enum NodeType {
 #define X(x) x,
@@ -91,7 +92,7 @@ struct AstNode {
             struct AstNode* rvalue;
         };
 
-        // AST_PROGRAM
+        // AST_PROGRAM / AST_BLOCK
         struct {
             struct AstNode** stmnts;
             size_t stmnt_count;

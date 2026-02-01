@@ -69,3 +69,22 @@ String string_join(const char* sep, const char** strs, size_t strc) {
 
     return s;
 }
+
+void ptrarr_append(PtrArr* a, void* data) {
+    if (a->capacity == 0) {
+        a->capacity = 32;
+        a->data = malloc(a->capacity * sizeof(void*));
+    }
+
+    size_t cap = a->capacity;
+    while (cap <= a->size) {
+        cap *= 2;
+    }
+
+    if (cap != a->capacity) {
+        a->capacity = cap;
+        a->data = realloc(a->data, a->capacity * sizeof(void*));
+    }
+
+    a->data[a->size++] = data;
+}

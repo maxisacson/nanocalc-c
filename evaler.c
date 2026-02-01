@@ -207,7 +207,7 @@ Value_t eval_identifier(Context_t* context, const char* name) {
     return get_value(context, name);
 }
 
-Value_t eval_program(Context_t* context, Node_t** stmnts, size_t stmnt_count) {
+Value_t eval_stmnts(Context_t* context, Node_t** stmnts, size_t stmnt_count) {
     Value_t result = NIL;
 
     for (size_t i = 0; i < stmnt_count; ++i) {
@@ -291,13 +291,15 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
         case AST_ASSIGNMENT:
             return eval_assignment(context, node->ident, eval(node->rvalue, context));
         case AST_PROGRAM:
-            return eval_program(context, node->stmnts, node->stmnt_count);
+            return eval_stmnts(context, node->stmnts, node->stmnt_count);
         case AST_ITEMS:
             return eval_items(context, node->items, node->item_count);
         case AST_FCALL:
             return eval_fcall(context, node->fname, node->params);
         case AST_FDEF:
             return eval_fdef(context, node->fname, node->params, node->fbody);
+        case AST_BLOCK:
+            return eval_stmnts(context, node->stmnts, node->stmnt_count);
         default:
             fprintf(stderr, "eval_error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
                     node_type_to_str(node->type));

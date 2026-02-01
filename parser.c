@@ -58,6 +58,12 @@ size_t node_count = 0;
                      tok_type_to_str(parser->tok->type));                                                              \
     }
 
+#define expect3(tt1, tt2, tt3)                                                                              \
+    if (parser->tok->type != (tt1) && parser->tok->type != (tt2) && parser->tok->type != (tt3)) {           \
+        syntax_error("expected %s, %s, or %s but got %s\n", tok_type_to_str((tt1)), tok_type_to_str((tt2)), \
+                     tok_type_to_str((tt3)), tok_type_to_str(parser->tok->type));                           \
+    }
+
 void draw_ast(Node_t* root) {
     Node_t** queue = malloc(node_count * sizeof(Node_t*));
 
@@ -286,18 +292,13 @@ void parse_program(struct Parser* parser, struct AstNode* node) {
     }
     node->type = AST_PROGRAM;
 
-    size_t stmnts_cap = 128;
-    node->stmnt_count = 0;
-    node->stmnts = malloc(stmnts_cap * sizeof(Node_t*));
+    PtrArr arr = {};
+    struct AstNode* tmp;
 
     while (parser->tok->type != TOK_EOF) {
-        if (node->stmnt_count >= stmnts_cap) {
-            stmnts_cap *= 2;
-            node->stmnts = realloc(node->stmnts, stmnts_cap * sizeof(Node_t*));
-        }
-        node->stmnts[node->stmnt_count] = malloc(sizeof(Node_t));
-        parse_stmnt(parser, node->stmnts[node->stmnt_count]);
-        node->stmnt_count++;
+        tmp = new_node();
+        parse_stmnt(parser, tmp);
+        ptrarr_append(&arr, tmp);
 
         if (parser->tok->type != TOK_EOF) {
             expect2(TOK_SEMICOLON, TOK_EOL);
@@ -307,6 +308,9 @@ void parse_program(struct Parser* parser, struct AstNode* node) {
             parser->tok++;
         }
     }
+
+    node->stmnt_count = arr.size;
+    node->stmnts = (struct AstNode**)arr.data;
 
     while (parser->tok->type == TOK_EOL) {
         parser->tok++;
@@ -455,26 +459,57 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
 
 void parse_items(struct Parser* parser, struct AstNode* node) {
     node->type = AST_ITEMS;
-    size_t cap = 128;
-    node->items = malloc(cap * sizeof(Node_t*));
-    node->item_count = 0;
 
-    node->items[node->item_count] = malloc(sizeof(Node_t));
-    parse_expr(parser, node->items[node->item_count]);
-    node->item_count++;
+    PtrArr arr = {};
+
+    struct AstNode* tmp = new_node();
+    parse_expr(parser, tmp);
+    ptrarr_append(&arr, tmp);
 
     while (parser->tok->type == TOK_COMMA) {
         parser->tok++;
-
-        if (node->item_count >= cap) {
-            cap *= 2;
-            node->items = realloc(node->items, cap * sizeof(Node_t*));
-        }
-
-        node->items[node->item_count] = malloc(sizeof(Node_t));
-        parse_expr(parser, node->items[node->item_count]);
-        node->item_count++;
+        tmp = new_node();
+        parse_expr(parser, tmp);
+        ptrarr_append(&arr, tmp);
     }
+    node->items = (struct AstNode**)arr.data;
+    node->item_count = arr.size;
+}
+
+void parse_block(struct Parser* parser, struct AstNode* node) {
+    expect(TOK_LBRACE);
+    parser->tok++;
+    node->type = AST_BLOCK;
+
+    while (parser->tok->type == TOK_EOL) {
+        parser->tok++;
+    }
+
+    PtrArr arr = {};
+
+    struct AstNode* tmp;
+
+    while (parser->tok->type != TOK_RBRACE) {
+        tmp = new_node();
+        parse_stmnt(parser, tmp);
+        ptrarr_append(&arr, tmp);
+
+        expect3(TOK_RBRACE, TOK_SEMICOLON, TOK_EOL);
+
+        while (parser->tok->type == TOK_SEMICOLON || parser->tok->type == TOK_EOL) {
+            parser->tok++;
+        }
+    }
+
+    node->stmnts = (struct AstNode**)arr.data;
+    node->stmnt_count = arr.size;
+
+    while (parser->tok->type == TOK_EOL) {
+        parser->tok++;
+    }
+
+    expect(TOK_RBRACE);
+    parser->tok++;
 }
 
 void parse_atom(struct Parser* parser, struct AstNode* node) {
@@ -514,6 +549,9 @@ void parse_atom(struct Parser* parser, struct AstNode* node) {
             node->value.type = V_STRING;
             node->value.string_value = parser->tok->value;
             parser->tok++;
+        } break;
+        case TOK_LBRACE: {
+            parse_block(parser, node);
         } break;
         default:
             syntax_error("unexpected token: %s\n", tok_to_str(*parser->tok));
