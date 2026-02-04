@@ -197,6 +197,20 @@ const char* ast_node_to_str(struct AstNode* node) {
             }
             string_append(&s, ")");
         } break;
+        case AST_FDEF: {
+            string_append_n(&s, 3, "(", node->fname, ":");
+            for (size_t i = 0; i < node->params->item_count; ++i) {
+                string_append_n(&s, 2, " ", node->params->items[i]->name);
+            }
+            string_append_n(&s, 3, " ", ast_node_to_str(node->fbody), ")");
+        } break;
+        case AST_BLOCK: {
+            string_append(&s, "(block");
+            for (size_t i = 0; i < node->stmnt_count; ++i) {
+                string_append_n(&s, 2, " ", ast_node_to_str(node->stmnts[i]));
+            }
+            string_append(&s, ")");
+        } break;
         default:
             error("%s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(node->type));
     };
