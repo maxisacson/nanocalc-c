@@ -133,8 +133,6 @@ const char* node_type_to_str(enum NodeType node_type);
 const char* binop_type_to_str(enum TokenType binop_type);
 const char* value_type_to_str(enum ValueType value_type);
 
-struct AstNode* new_node();
-
 void parse(struct Parser* parser, struct AstNode* node);
 
 void parse_program(struct Parser*, struct AstNode* node);

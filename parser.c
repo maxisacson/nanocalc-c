@@ -149,59 +149,59 @@ void draw_ast(Node_t* root) {
 }
 
 const char* ast_node_to_str(struct AstNode* node) {
-    char* buf = malloc(128);
+    String s = {};
 
     switch (node->type) {
         case AST_LITERAL: {
             const char* sval = ast_value_to_str(&node->value);
-            sprintf(buf, "(literal %s)", sval);
+            string_append_n(&s, 3, "(literal ", sval, ")");
         } break;
         case AST_BINOP: {
             const char* lhs = ast_node_to_str(node->lhs);
             const char* rhs = ast_node_to_str(node->rhs);
             const char* op = binop_type_to_str(node->binop_type);
-            sprintf(buf, "(binop%s %s %s)", op, lhs, rhs);
+            string_append_n(&s, 7, "(binop", op, " ", lhs, " ", rhs, ")");
         } break;
         case AST_UNOP: {
             const char* n = ast_node_to_str(node->node);
             const char* op = binop_type_to_str(node->unop_type);
-            sprintf(buf, "(unop%s %s)", op, n);
+            string_append_n(&s, 5,  "(unop", op, " ", n, ")");
         } break;
         case AST_IDENTIFIER: {
             const char* name = node->name;
-            sprintf(buf, "(identifier %s)", name);
+            string_append_n(&s, 3, "(identifier ",  name, ")");
         } break;
         case AST_ASSIGNMENT: {
             const char* ident = ast_node_to_str(node->ident);
             const char* rvalue = ast_node_to_str(node->rvalue);
-            sprintf(buf, "(= %s %s)", ident, rvalue);
+            string_append_n(&s, 5,  "(= ", ident, " ", rvalue, ")");
         } break;
         case AST_PROGRAM: {
-            sprintf(buf, "(program");
+            string_append(&s, "(program");
             for (size_t i = 0; i < node->stmnt_count; ++i) {
-                sprintf(buf, "%s %s", buf, ast_node_to_str(node->stmnts[i]));
+                string_append_n(&s, 2, " ", ast_node_to_str(node->stmnts[i]));
             }
-            sprintf(buf, "%s)", buf);
+            string_append(&s, ")");
         } break;
         case AST_ITEMS: {
-            sprintf(buf, "(items");
+            string_append(&s, "(items");
             for (size_t i = 0; i < node->item_count; ++i) {
-                sprintf(buf, "%s %s", buf, ast_node_to_str(node->items[i]));
+                string_append_n(&s, 2, " ", ast_node_to_str(node->items[i]));
             }
-            sprintf(buf, "%s)", buf);
+            string_append(&s, ")");
         } break;
         case AST_FCALL: {
-            sprintf(buf, "(%s", node->fname);
+            string_append_n(&s, 2, "(", node->fname);
             for (size_t i = 0; i < node->params->item_count; ++i) {
-                sprintf(buf, "%s %s", buf, ast_node_to_str(node->params->items[i]));
+                string_append_n(&s, 2, " ", ast_node_to_str(node->params->items[i]));
             }
-            sprintf(buf, "%s)", buf);
+            string_append(&s, ")");
         } break;
         default:
             error("%s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(node->type));
     };
 
-    return buf;
+    return s.data;
 }
 
 const char* node_type_to_str(enum NodeType node_type) {
@@ -297,12 +297,11 @@ const char* binop_type_to_str(enum TokenType binop_type) {
 }
 
 struct AstNode* new_node() {
-    struct AstNode* node = malloc(sizeof(struct AstNode));
-    return node;
+    return malloc(sizeof(struct AstNode));
 }
 
-void parse(struct Parser* parser, struct AstNode* node) {
-    parse_program(parser, node);
+void parse(struct Parser* parser, struct AstNode* root) {
+    parse_program(parser, root);
 }
 
 void parse_program(struct Parser* parser, struct AstNode* node) {

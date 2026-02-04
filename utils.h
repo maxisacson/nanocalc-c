@@ -23,10 +23,17 @@ typedef struct {
 } String;
 
 void string_append(String* s, const char* str);
+void string_append_v(String* s, size_t count, const char* strings[]);
 void string_append_ch(String* s, char c);
 void string_reserve(String* s, size_t size);
 void string_set(String* s, const char* str);
 String string_join(const char* sep, const char** strs, size_t strc);
+
+#define string_append_n(s, n, ...)         \
+    do {                                   \
+        const char* tmp[] = {__VA_ARGS__}; \
+        string_append_v((s), (n), tmp);    \
+    } while (0);
 
 typedef struct {
     void** data;

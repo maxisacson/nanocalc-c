@@ -70,6 +70,19 @@ String string_join(const char* sep, const char** strs, size_t strc) {
     return s;
 }
 
+void string_append_v(String* s, size_t count, const char* strings[]) {
+    size_t total = s->size;
+    for (size_t i = 0; i < count; ++i) {
+        total += strlen(strings[i]);
+    }
+
+    string_reserve_exact(s, total);
+
+    for (size_t i = 0; i < count; ++i) {
+        string_append(s, strings[i]);
+    }
+}
+
 void ptrarr_append(PtrArr* a, void* data) {
     if (a->capacity == 0) {
         a->capacity = 32;

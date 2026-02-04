@@ -13,7 +13,7 @@ const char* read_file(FILE* fd) {
     size_t bytes;
     size_t total = 0;
     char* contents;
-    while ((bytes = fread(buf, 1, BUFSIZE, stdin)) > 0) {
+    while ((bytes = fread(buf, 1, BUFSIZE, fd)) > 0) {
         if (total == 0) {
             contents = malloc(bytes + 1);
         } else {
@@ -38,12 +38,12 @@ int main(int argc, const char* argv[]) {
     struct Token* tokens;
     tokenize(text, &tokens);
 
-    struct AstNode* root = new_node();
     struct Parser parser;
     parser.tokens = tokens;
     parser.tok = tokens;
 
-    parse(&parser, root);
+    struct AstNode root;
+    parse(&parser, &root);
 
     while (tokens->type != TOK_EOF) {
         printf("%s ", tok_to_str(*tokens++));
@@ -52,19 +52,19 @@ int main(int argc, const char* argv[]) {
     printf("%s ", tok_to_str(*tokens++));
     printf("\n");
 
-    // printf("%s\n", ast_node_to_str(root));
+    printf("%s\n", ast_node_to_str(&root));
 
     struct Context context = new_context(NULL);
 
     struct AstValue val = {.type=V_INT, .int_value = 42};
     set_value(&context, "x", val);
 
-    struct AstValue result = eval(root, &context);
+    struct AstValue result = eval(&root, &context);
 
     const char* out = ast_value_to_str(&result);
     printf("%s\n", out);
 
-    draw_ast(root);
+    draw_ast(&root);
 
     return 0;
 }
