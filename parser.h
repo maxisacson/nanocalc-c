@@ -136,7 +136,6 @@ struct Parser {
 };
 
 void draw_ast(struct AstNode* root);
-const char* ast_node_to_str(struct AstNode* node);
 const char* ast_value_to_str(struct AstValue* value);
 const char* node_type_to_str(enum NodeType node_type);
 const char* binop_type_to_str(enum TokenType binop_type);
