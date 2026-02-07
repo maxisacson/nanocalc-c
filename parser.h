@@ -108,7 +108,8 @@ struct AstNode {
         // AST_FCALL / AST_FDEF
         struct {
             const char* fname;
-            struct AstNode* params;
+            struct AstNode** params;
+            size_t param_count;
 
             // AST_FDEF
             struct AstNode* fbody;

@@ -113,18 +113,18 @@ void draw_ast(Node_t* root) {
             } break;
             case AST_FCALL: {
                 fprintf(out, "v_%p[label=\"%s()\"]\n", n, n->fname);
-                for (size_t j = 0; j < n->params->item_count; ++j) {
-                    fprintf(out, "v_%p -- v_%p\n", n, n->params->items[j]);
-                    queue[i++] = n->params->items[j];
+                for (size_t j = 0; j < n->param_count; ++j) {
+                    fprintf(out, "v_%p -- v_%p\n", n, n->params[j]);
+                    queue[i++] = n->params[j];
                 }
             } break;
             case AST_FDEF: {
                 fprintf(out, "v_%p[label=\"%s(", n, n->fname);
-                for (size_t j = 0; j < n->params->item_count; ++j) {
+                for (size_t j = 0; j < n->param_count; ++j) {
                     if (j > 0) {
                         fprintf(out, ", ");
                     }
-                    fprintf(out, "%s", n->params->items[j]->name);
+                    fprintf(out, "%s", n->params[j]->name);
                 }
                 fprintf(out, ")\"]\n");
                 fprintf(out, "v_%p -- v_%p\n", n, n->fbody);
@@ -155,75 +155,75 @@ void draw_ast(Node_t* root) {
     system("dot -Tsvg -oast.svg ast.dot");
 }
 
-const char* ast_node_to_str(struct AstNode* node) {
-    String s = {};
-
-    switch (node->type) {
-        case AST_LITERAL: {
-            const char* sval = ast_value_to_str(&node->value);
-            string_append_n(&s, 3, "(literal ", sval, ")");
-        } break;
-        case AST_BINOP: {
-            const char* lhs = ast_node_to_str(node->lhs);
-            const char* rhs = ast_node_to_str(node->rhs);
-            const char* op = binop_type_to_str(node->binop_type);
-            string_append_n(&s, 7, "(binop", op, " ", lhs, " ", rhs, ")");
-        } break;
-        case AST_UNOP: {
-            const char* n = ast_node_to_str(node->node);
-            const char* op = binop_type_to_str(node->unop_type);
-            string_append_n(&s, 5,  "(unop", op, " ", n, ")");
-        } break;
-        case AST_IDENTIFIER: {
-            const char* name = node->name;
-            string_append_n(&s, 3, "(identifier ",  name, ")");
-        } break;
-        case AST_ASSIGNMENT: {
-            const char* ident = ast_node_to_str(node->ident);
-            const char* rvalue = ast_node_to_str(node->rvalue);
-            string_append_n(&s, 5,  "(= ", ident, " ", rvalue, ")");
-        } break;
-        case AST_PROGRAM: {
-            string_append(&s, "(program");
-            for (size_t i = 0; i < node->stmnt_count; ++i) {
-                string_append_n(&s, 2, " ", ast_node_to_str(node->stmnts[i]));
-            }
-            string_append(&s, ")");
-        } break;
-        case AST_ITEMS: {
-            string_append(&s, "(items");
-            for (size_t i = 0; i < node->item_count; ++i) {
-                string_append_n(&s, 2, " ", ast_node_to_str(node->items[i]));
-            }
-            string_append(&s, ")");
-        } break;
-        case AST_FCALL: {
-            string_append_n(&s, 2, "(", node->fname);
-            for (size_t i = 0; i < node->params->item_count; ++i) {
-                string_append_n(&s, 2, " ", ast_node_to_str(node->params->items[i]));
-            }
-            string_append(&s, ")");
-        } break;
-        case AST_FDEF: {
-            string_append_n(&s, 3, "(", node->fname, ":");
-            for (size_t i = 0; i < node->params->item_count; ++i) {
-                string_append_n(&s, 2, " ", node->params->items[i]->name);
-            }
-            string_append_n(&s, 3, " ", ast_node_to_str(node->fbody), ")");
-        } break;
-        case AST_BLOCK: {
-            string_append(&s, "(block");
-            for (size_t i = 0; i < node->stmnt_count; ++i) {
-                string_append_n(&s, 2, " ", ast_node_to_str(node->stmnts[i]));
-            }
-            string_append(&s, ")");
-        } break;
-        default:
-            error("%s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(node->type));
-    };
-
-    return s.data;
-}
+// const char* ast_node_to_str(struct AstNode* node) {
+//     String s = {};
+//
+//     switch (node->type) {
+//         case AST_LITERAL: {
+//             const char* sval = ast_value_to_str(&node->value);
+//             string_append_n(&s, 3, "(literal ", sval, ")");
+//         } break;
+//         case AST_BINOP: {
+//             const char* lhs = ast_node_to_str(node->lhs);
+//             const char* rhs = ast_node_to_str(node->rhs);
+//             const char* op = binop_type_to_str(node->binop_type);
+//             string_append_n(&s, 7, "(binop", op, " ", lhs, " ", rhs, ")");
+//         } break;
+//         case AST_UNOP: {
+//             const char* n = ast_node_to_str(node->node);
+//             const char* op = binop_type_to_str(node->unop_type);
+//             string_append_n(&s, 5,  "(unop", op, " ", n, ")");
+//         } break;
+//         case AST_IDENTIFIER: {
+//             const char* name = node->name;
+//             string_append_n(&s, 3, "(identifier ",  name, ")");
+//         } break;
+//         case AST_ASSIGNMENT: {
+//             const char* ident = ast_node_to_str(node->ident);
+//             const char* rvalue = ast_node_to_str(node->rvalue);
+//             string_append_n(&s, 5,  "(= ", ident, " ", rvalue, ")");
+//         } break;
+//         case AST_PROGRAM: {
+//             string_append(&s, "(program");
+//             for (size_t i = 0; i < node->stmnt_count; ++i) {
+//                 string_append_n(&s, 2, " ", ast_node_to_str(node->stmnts[i]));
+//             }
+//             string_append(&s, ")");
+//         } break;
+//         case AST_ITEMS: {
+//             string_append(&s, "(items");
+//             for (size_t i = 0; i < node->item_count; ++i) {
+//                 string_append_n(&s, 2, " ", ast_node_to_str(node->items[i]));
+//             }
+//             string_append(&s, ")");
+//         } break;
+//         case AST_FCALL: {
+//             string_append_n(&s, 2, "(", node->fname);
+//             for (size_t i = 0; i < node->params->item_count; ++i) {
+//                 string_append_n(&s, 2, " ", ast_node_to_str(node->params->items[i]));
+//             }
+//             string_append(&s, ")");
+//         } break;
+//         case AST_FDEF: {
+//             string_append_n(&s, 3, "(", node->fname, ":");
+//             for (size_t i = 0; i < node->params->item_count; ++i) {
+//                 string_append_n(&s, 2, " ", node->params->items[i]->name);
+//             }
+//             string_append_n(&s, 3, " ", ast_node_to_str(node->fbody), ")");
+//         } break;
+//         case AST_BLOCK: {
+//             string_append(&s, "(block");
+//             for (size_t i = 0; i < node->stmnt_count; ++i) {
+//                 string_append_n(&s, 2, " ", ast_node_to_str(node->stmnts[i]));
+//             }
+//             string_append(&s, ")");
+//         } break;
+//         default:
+//             error("%s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(node->type));
+//     };
+//
+//     return s.data;
+// }
 
 const char* node_type_to_str(enum NodeType node_type) {
     switch (node_type) {
@@ -468,11 +468,13 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
 
             node->type = AST_FCALL;
             node->fname = node->name;
-            node->params = node_new();
-            node->params->item_count = 0;
 
             if (parser->tok->type != TOK_RPAREN) {
-                parse_items(parser, node->params);
+                struct AstNode* tmp = node_new();
+                tmp->item_count = 0;
+                parse_items(parser, tmp);
+                node->params = tmp->items;
+                node->param_count = tmp->item_count;
             }
 
             expect(TOK_RPAREN);
@@ -482,10 +484,10 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
                 parser->tok++;
 
                 node->type = AST_FDEF;
-                for (size_t ip = 0; ip < node->params->item_count; ++ip) {
-                    if (node->params->items[ip]->type != AST_IDENTIFIER) {
+                for (size_t ip = 0; ip < node->param_count; ++ip) {
+                    if (node->params[ip]->type != AST_IDENTIFIER) {
                         syntax_error("expected identifier but got %s\n",
-                                     node_type_to_str(node->params->items[ip]->type));
+                                     node_type_to_str(node->params[ip]->type));
                     }
                 }
                 node->fbody = node_new();

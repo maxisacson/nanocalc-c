@@ -231,16 +231,15 @@ Value_t eval_items(Context_t* context, Node_t** items, size_t item_count) {
     return result;
 }
 
-Value_t eval_fcall(Context_t* context, const char* fname, Node_t* params) {
+Value_t eval_fcall(Context_t* context, const char* fname, Node_t** params, size_t param_count) {
     Value_t callable = get_value(context, fname);
     struct EvalFunc* f = callable.data;
 
     struct Context local = context_new(f->context);
 
-    Value_t plist = eval(params, context);
-
-    for (size_t ip = 0; ip < params->item_count; ++ip) {
-        set_value(&local, f->params[ip], plist.list_value[ip]);
+    for (size_t i = 0; i < param_count; ++i) {
+        Value_t param = eval(params[i], context);
+        set_value(&local, f->params[i], param);
     }
 
     Value_t result = eval(f->body, &local);
@@ -248,20 +247,20 @@ Value_t eval_fcall(Context_t* context, const char* fname, Node_t* params) {
     return result;
 }
 
-Value_t eval_fdef(Context_t* context, const char* fname, Node_t* params, Node_t* body) {
-    const char** pnames = malloc(params->item_count * sizeof(const char*));
+Value_t eval_fdef(Context_t* context, const char* fname, Node_t** params, size_t param_count, Node_t* body) {
+    const char** names = malloc(param_count * sizeof(const char*));
 
-    for (size_t ip = 0; ip < params->item_count; ++ip) {
-        if (params->items[ip]->type != AST_IDENTIFIER) {
-            eval_error("expected identifier but got %s\n", node_type_to_str(params->items[ip]->type));
+    for (size_t i = 0; i < param_count; ++i) {
+        if (params[i]->type != AST_IDENTIFIER) {
+            eval_error("expected identifier but got %s\n", node_type_to_str(params[i]->type));
         }
-        pnames[ip] = params->items[ip]->name;
+        names[i] = params[i]->name;
     }
 
     struct EvalFunc* ef = malloc(sizeof(struct EvalFunc));
     ef->context = context;
-    ef->params = pnames;
-    ef->param_count = params->item_count;
+    ef->params = names;
+    ef->param_count = param_count;
     ef->body = body;
 
     struct AstValue callable = {.data = ef};
@@ -305,9 +304,9 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
         case AST_ITEMS:
             return eval_items(context, node->items, node->item_count);
         case AST_FCALL:
-            return eval_fcall(context, node->fname, node->params);
+            return eval_fcall(context, node->fname, node->params, node->param_count);
         case AST_FDEF:
-            return eval_fdef(context, node->fname, node->params, node->fbody);
+            return eval_fdef(context, node->fname, node->params, node->param_count, node->fbody);
         case AST_BLOCK:
             return eval_stmnts(context, node->stmnts, node->stmnt_count);
         case AST_FOR:
