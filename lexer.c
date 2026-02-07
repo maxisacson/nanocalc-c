@@ -117,6 +117,10 @@ void tok_number(struct TokenArray* arr, const char** ptr) {
 
     enum TokenType tt = TOK_INTEGER;
 
+    if (**ptr == '-') {
+        string_append_ch(&value, *(*ptr)++);
+    }
+
     while ('0' <= **ptr && **ptr <= '9') {
         string_append_ch(&value, *(*ptr)++);
     }
@@ -236,8 +240,12 @@ int tokenize(const char* string, struct Token* tokens[]) {
                 }
                 break;
             case '-':
-                ta_append(&arr, TOK_MINUS, 0);
-                ++s;
+                if (*peek == '.' || '0' <= *peek && *peek <= '9') {
+                    tok_number(&arr, &s);
+                } else {
+                    ta_append(&arr, TOK_MINUS, 0);
+                    ++s;
+                }
                 break;
             case '+':
                 ta_append(&arr, TOK_PLUS, 0);
