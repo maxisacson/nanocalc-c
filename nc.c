@@ -52,9 +52,9 @@ int main(int argc, const char* argv[]) {
     printf("%s ", tok_to_str(*tokens++));
     printf("\n");
 
-    printf("%s\n", ast_node_to_str(&root));
+    // printf("%s\n", ast_node_to_str(&root));
 
-    struct Context context = new_context(NULL);
+    struct Context context = context_new(NULL);
 
     struct AstValue val = {.type=V_INT, .int_value = 42};
     set_value(&context, "x", val);

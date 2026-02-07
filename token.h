@@ -47,6 +47,7 @@
     X(TOK_GT)         \
     X(TOK_EQ)         \
     X(TOK_HASH)       \
+    X(TOK_BANG)       \
     X(TOK_INTEGER)    \
     X(TOK_FLOAT)      \
     X(TOK_STRING)     \

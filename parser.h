@@ -15,7 +15,8 @@
     X(AST_FCALL)      \
     X(AST_FDEF)       \
     X(AST_IDX)        \
-    X(AST_BLOCK)
+    X(AST_BLOCK)      \
+    X(AST_FOR)
 
 enum NodeType {
 #define X(x) x,
@@ -117,6 +118,13 @@ struct AstNode {
         struct {
             const char* lname;
             struct AstNode* iexpr;
+        };
+
+        // AST_FOR
+        struct {
+            const char* lvar;
+            struct AstNode* lexpr;
+            struct AstNode* lbody;
         };
     };
 };

@@ -137,6 +137,13 @@ void draw_ast(Node_t* root) {
                     queue[i++] = n->stmnts[j];
                 }
             } break;
+            case AST_FOR: {
+                fprintf(out, "v_%p[label=\"%s %s\"]\n", n, "for", n->lvar);
+                fprintf(out, "v_%p -- v_%p\n", n, n->lexpr);
+                fprintf(out, "v_%p -- v_%p\n", n, n->lbody);
+                queue[i++] = n->lexpr;
+                queue[i++] = n->lbody;
+            } break;
             default:
                 error("%s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(n->type));
         };
@@ -310,7 +317,8 @@ const char* binop_type_to_str(enum TokenType binop_type) {
     }
 }
 
-struct AstNode* new_node() {
+struct AstNode* node_new() {
+    node_count++;
     return malloc(sizeof(struct AstNode));
 }
 
@@ -328,7 +336,7 @@ void parse_program(struct Parser* parser, struct AstNode* node) {
     struct AstNode* tmp;
 
     while (parser->tok->type != TOK_EOF) {
-        tmp = new_node();
+        tmp = node_new();
         parse_stmnt(parser, tmp);
         ptrarr_append(&arr, tmp);
 
@@ -350,7 +358,29 @@ void parse_program(struct Parser* parser, struct AstNode* node) {
 }
 
 void parse_stmnt(struct Parser* parser, struct AstNode* node) {
-    parse_expr(parser, node);
+    if (parser->tok->type == KW_for) {
+        node->type = AST_FOR;
+        parser->tok++;
+
+        expect(TOK_IDENTIFIER);
+        node->lvar = parser->tok->value;
+        parser->tok++;
+
+        expect(KW_in);
+        parser->tok++;
+
+        node->lexpr = node_new();
+        parse_expr(parser, node->lexpr);
+
+        if (parser->tok->type == TOK_EOL) {
+            parser->tok++;
+        }
+
+        node->lbody = node_new();
+        parse_stmnt(parser, node->lbody);
+    } else {
+        parse_expr(parser, node);
+    }
 }
 
 void parse_expr(struct Parser* parser, struct AstNode* node) {
@@ -364,10 +394,10 @@ void parse_sum(struct Parser* parser, struct AstNode* node) {
         enum TokenType op = parser->tok->type;
         parser->tok++;
 
-        struct AstNode* rhs = new_node();
+        struct AstNode* rhs = node_new();
         parse_term(parser, rhs);
 
-        struct AstNode* lhs = new_node();
+        struct AstNode* lhs = node_new();
         *lhs = *node;
 
         node->type = AST_BINOP;
@@ -384,10 +414,10 @@ void parse_term(struct Parser* parser, struct AstNode* node) {
         enum TokenType op = parser->tok->type;
         parser->tok++;
 
-        struct AstNode* rhs = new_node();
+        struct AstNode* rhs = node_new();
         parse_factor(parser, rhs);
 
-        struct AstNode* lhs = new_node();
+        struct AstNode* lhs = node_new();
         *lhs = *node;
 
         node->type = AST_BINOP;
@@ -402,7 +432,7 @@ void parse_factor(struct Parser* parser, struct AstNode* node) {
         node->type = AST_UNOP;
         node->unop_type = parser->tok->type;
         parser->tok++;
-        node->node = new_node();
+        node->node = node_new();
         parse_factor(parser, node->node);
 
         return;
@@ -411,13 +441,13 @@ void parse_factor(struct Parser* parser, struct AstNode* node) {
     parse_atom(parser, node);
 
     if (parser->tok->type == TOK_POWER) {
-        struct AstNode* lhs = new_node();
+        struct AstNode* lhs = node_new();
         *lhs = *node;
         node->type = AST_BINOP;
         node->binop_type = parser->tok->type;
         node->lhs = lhs;
         parser->tok++;
-        node->rhs = new_node();
+        node->rhs = node_new();
         parse_factor(parser, node->rhs);
     }
 }
@@ -425,12 +455,12 @@ void parse_factor(struct Parser* parser, struct AstNode* node) {
 void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
     switch (parser->tok->type) {
         case TOK_EQ: {
-            Node_t* lhs = new_node();
+            Node_t* lhs = node_new();
             *lhs = *node;
             node->ident = lhs;
             node->type = AST_ASSIGNMENT;
             parser->tok++;
-            node->rvalue = new_node();
+            node->rvalue = node_new();
             parse_expr(parser, node->rvalue);
         } break;
         case TOK_LPAREN: {
@@ -438,7 +468,7 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
 
             node->type = AST_FCALL;
             node->fname = node->name;
-            node->params = new_node();
+            node->params = node_new();
             node->params->item_count = 0;
 
             if (parser->tok->type != TOK_RPAREN) {
@@ -458,7 +488,7 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
                                      node_type_to_str(node->params->items[ip]->type));
                     }
                 }
-                node->fbody = new_node();
+                node->fbody = node_new();
                 parse_expr(parser, node->fbody);
             }
         } break;
@@ -467,7 +497,7 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
 
             node->type = AST_IDX;
             node->lname = node->name;
-            node->iexpr = new_node();
+            node->iexpr = node_new();
 
             parse_expr(parser, node->iexpr);
             expect(TOK_RBRACKET);
@@ -476,11 +506,11 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
             if (parser->tok->type == TOK_EQ) {
                 parser->tok++;
 
-                struct AstNode* tmp = new_node();
+                struct AstNode* tmp = node_new();
                 *tmp = *node;
                 node->type = AST_ASSIGNMENT;
                 node->ident = tmp;
-                node->rvalue = new_node();
+                node->rvalue = node_new();
                 parse_expr(parser, node->rvalue);
             }
         } break;
@@ -494,13 +524,13 @@ void parse_items(struct Parser* parser, struct AstNode* node) {
 
     PtrArr arr = {};
 
-    struct AstNode* tmp = new_node();
+    struct AstNode* tmp = node_new();
     parse_expr(parser, tmp);
     ptrarr_append(&arr, tmp);
 
     while (parser->tok->type == TOK_COMMA) {
         parser->tok++;
-        tmp = new_node();
+        tmp = node_new();
         parse_expr(parser, tmp);
         ptrarr_append(&arr, tmp);
     }
@@ -522,7 +552,7 @@ void parse_block(struct Parser* parser, struct AstNode* node) {
     struct AstNode* tmp;
 
     while (parser->tok->type != TOK_RBRACE) {
-        tmp = new_node();
+        tmp = node_new();
         parse_stmnt(parser, tmp);
         ptrarr_append(&arr, tmp);
 

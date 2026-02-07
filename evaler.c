@@ -20,7 +20,7 @@ struct Map new_map() {
     return map;
 }
 
-Context_t new_context(Context_t* parent) {
+Context_t context_new(Context_t* parent) {
     Context_t context;
     context.parent = parent;
     context.map = new_map();
@@ -235,7 +235,7 @@ Value_t eval_fcall(Context_t* context, const char* fname, Node_t* params) {
     Value_t callable = get_value(context, fname);
     struct EvalFunc* f = callable.data;
 
-    struct Context local = new_context(f->context);
+    struct Context local = context_new(f->context);
 
     Value_t plist = eval(params, context);
 
@@ -271,6 +271,23 @@ Value_t eval_fdef(Context_t* context, const char* fname, Node_t* params, Node_t*
     return NIL;
 }
 
+Value_t eval_for(Context_t* context, const char* name, Node_t* expr, Node_t* body) {
+    Value_t values = eval(expr, context);
+
+    if (values.type != V_LIST) {
+        set_value(context, name, values);
+        return eval(body, context);
+    }
+
+    Value_t value = NIL;
+    for (size_t i = 0; i < values.list_size; ++i) {
+        set_value(context, name, values.list_value[i]);
+        value = eval(body, context);
+    }
+
+    return value;
+}
+
 struct AstValue eval(struct AstNode* node, struct Context* context) {
     switch (node->type) {
         case AST_LITERAL:
@@ -293,6 +310,8 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
             return eval_fdef(context, node->fname, node->params, node->fbody);
         case AST_BLOCK:
             return eval_stmnts(context, node->stmnts, node->stmnt_count);
+        case AST_FOR:
+            return eval_for(context, node->lvar, node->lexpr, node->lbody);
         default:
             fprintf(stderr, "eval_error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
                     node_type_to_str(node->type));

@@ -26,8 +26,8 @@ struct EvalFunc {
     struct AstNode* body;
 };
 
-struct Map new_map();
-struct Context new_context(struct Context* parent);
+struct Map map_new();
+struct Context context_new(struct Context* parent);
 
 struct AstValue get_value(struct Context* context, const char* name);
 void set_value(struct Context* context, const char* name, struct AstValue value);

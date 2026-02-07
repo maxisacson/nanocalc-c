@@ -230,8 +230,11 @@ int tokenize(const char* string, struct Token* tokens[]) {
                 if (*peek == '=') {
                     s += 2;
                     ta_append(&arr, TOK_NEQ, 0);
-                    break;
+                } else {
+                    ta_append(&arr, TOK_BANG, 0);
+                    ++s;
                 }
+                break;
             case '-':
                 ta_append(&arr, TOK_MINUS, 0);
                 ++s;
