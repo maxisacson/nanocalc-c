@@ -65,69 +65,73 @@ struct AstValue {
 
 struct AstNode {
     enum NodeType type;
-    union {
-        // AST_LITERAL
-        struct AstValue value;
+    struct {
+        union {
+            // AST_LITERAL
+            struct {
+                struct AstValue value;
+            } literal;
 
-        // AST_BINOP
-        struct {
-            enum TokenType binop_type;
-            struct AstNode* lhs;
-            struct AstNode* rhs;
+            // AST_BINOP
+            struct {
+                enum TokenType binop_type;
+                struct AstNode* lhs;
+                struct AstNode* rhs;
+            } binop;
+
+            // AST_UNOP
+            struct {
+                enum TokenType unop_type;
+                struct AstNode* node;
+            } unop;
+
+            // AST_IDENTIFIER
+            struct {
+                const char* name;
+            } identifier;
+
+            // AST_ASSIGNMENT
+            struct {
+                struct AstNode* ident;
+                struct AstNode* rvalue;
+            } assignment;
+
+            // AST_PROGRAM / AST_BLOCK
+            struct {
+                struct AstNode** stmnts;
+                size_t stmnt_count;
+            } stmnts;
+
+            // AST_ITEMS
+            struct {
+                struct AstNode** items;
+                size_t item_count;
+            } items;
+
+            // AST_FDEF / AST_FDEF
+            struct {
+                const char* fname;
+                struct AstNode** params;
+                size_t param_count;
+
+                // AST_FDEF
+                struct AstNode* fbody;
+            } fcall_or_fdef;
+
+            // AST_IDX
+            struct {
+                const char* lname;
+                struct AstNode* iexpr;
+            } idx;
+
+            // AST_FOR
+            struct {
+                const char* lvar;
+                struct AstNode* lexpr;
+                struct AstNode* lbody;
+            } for_loop;
         };
-
-        // AST_UNOP
-        struct {
-            enum TokenType unop_type;
-            struct AstNode* node;
-        };
-
-        // AST_IDENTIFIER
-        struct {
-            const char* name;
-        };
-
-        // AST_ASSIGNMENT
-        struct {
-            struct AstNode* ident;
-            struct AstNode* rvalue;
-        };
-
-        // AST_PROGRAM / AST_BLOCK
-        struct {
-            struct AstNode** stmnts;
-            size_t stmnt_count;
-        };
-
-        // AST_ITEMS
-        struct {
-            struct AstNode** items;
-            size_t item_count;
-        };
-
-        // AST_FCALL / AST_FDEF
-        struct {
-            const char* fname;
-            struct AstNode** params;
-            size_t param_count;
-
-            // AST_FDEF
-            struct AstNode* fbody;
-        };
-
-        // AST_IDX
-        struct {
-            const char* lname;
-            struct AstNode* iexpr;
-        };
-
-        // AST_FOR
-        struct {
-            const char* lvar;
-            struct AstNode* lexpr;
-            struct AstNode* lbody;
-        };
-    };
+    } as;
 };
 
 struct Parser {

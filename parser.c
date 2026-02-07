@@ -78,71 +78,71 @@ void draw_ast(Node_t* root) {
         n = queue[--i];
         switch (n->type) {
             case AST_LITERAL:
-                fprintf(out, "v_%p[label=\"%s\"]\n", n, ast_value_to_str(&n->value));
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, ast_value_to_str(&n->as.literal.value));
                 break;
             case AST_BINOP: {
-                fprintf(out, "v_%p[label=\"%s\"]\n", n, binop_type_to_str(n->binop_type));
-                fprintf(out, "v_%p -- v_%p\n", n, n->lhs);
-                fprintf(out, "v_%p -- v_%p\n", n, n->rhs);
-                queue[i++] = n->lhs;
-                queue[i++] = n->rhs;
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, binop_type_to_str(n->as.binop.binop_type));
+                fprintf(out, "v_%p -- v_%p\n", n, n->as.binop.lhs);
+                fprintf(out, "v_%p -- v_%p\n", n, n->as.binop.rhs);
+                queue[i++] = n->as.binop.lhs;
+                queue[i++] = n->as.binop.rhs;
             } break;
             case AST_IDENTIFIER: {
-                fprintf(out, "v_%p[label=\"%s\"]\n", n, n->name);
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, n->as.identifier.name);
             } break;
             case AST_ASSIGNMENT: {
                 fprintf(out, "v_%p[label=\"%s\"]\n", n, "=");
-                fprintf(out, "v_%p -- v_%p\n", n, n->ident);
-                fprintf(out, "v_%p -- v_%p\n", n, n->rvalue);
-                queue[i++] = n->ident;
-                queue[i++] = n->rvalue;
+                fprintf(out, "v_%p -- v_%p\n", n, n->as.assignment.ident);
+                fprintf(out, "v_%p -- v_%p\n", n, n->as.assignment.rvalue);
+                queue[i++] = n->as.assignment.ident;
+                queue[i++] = n->as.assignment.rvalue;
             } break;
             case AST_PROGRAM: {
                 fprintf(out, "v_%p[label=\"%s\"]\n", n, "program");
-                for (size_t j = 0; j < n->stmnt_count; ++j) {
-                    fprintf(out, "v_%p -- v_%p\n", n, n->stmnts[j]);
-                    queue[i++] = n->stmnts[j];
+                for (size_t j = 0; j < n->as.stmnts.stmnt_count; ++j) {
+                    fprintf(out, "v_%p -- v_%p\n", n, n->as.stmnts.stmnts[j]);
+                    queue[i++] = n->as.stmnts.stmnts[j];
                 }
             } break;
             case AST_ITEMS: {
                 fprintf(out, "v_%p[label=\"%s\"]\n", n, "items");
-                for (size_t j = 0; j < n->item_count; ++j) {
-                    fprintf(out, "v_%p -- v_%p\n", n, n->items[j]);
-                    queue[i++] = n->items[j];
+                for (size_t j = 0; j < n->as.items.item_count; ++j) {
+                    fprintf(out, "v_%p -- v_%p\n", n, n->as.items.items[j]);
+                    queue[i++] = n->as.items.items[j];
                 }
             } break;
             case AST_FCALL: {
-                fprintf(out, "v_%p[label=\"%s()\"]\n", n, n->fname);
-                for (size_t j = 0; j < n->param_count; ++j) {
-                    fprintf(out, "v_%p -- v_%p\n", n, n->params[j]);
-                    queue[i++] = n->params[j];
+                fprintf(out, "v_%p[label=\"%s()\"]\n", n, n->as.fcall_or_fdef.fname);
+                for (size_t j = 0; j < n->as.fcall_or_fdef.param_count; ++j) {
+                    fprintf(out, "v_%p -- v_%p\n", n, n->as.fcall_or_fdef.params[j]);
+                    queue[i++] = n->as.fcall_or_fdef.params[j];
                 }
             } break;
             case AST_FDEF: {
-                fprintf(out, "v_%p[label=\"%s(", n, n->fname);
-                for (size_t j = 0; j < n->param_count; ++j) {
+                fprintf(out, "v_%p[label=\"%s(", n, n->as.fcall_or_fdef.fname);
+                for (size_t j = 0; j < n->as.fcall_or_fdef.param_count; ++j) {
                     if (j > 0) {
                         fprintf(out, ", ");
                     }
-                    fprintf(out, "%s", n->params[j]->name);
+                    fprintf(out, "%s", n->as.fcall_or_fdef.params[j]->as.identifier.name);
                 }
                 fprintf(out, ")\"]\n");
-                fprintf(out, "v_%p -- v_%p\n", n, n->fbody);
-                queue[i++] = n->fbody;
+                fprintf(out, "v_%p -- v_%p\n", n, n->as.fcall_or_fdef.fbody);
+                queue[i++] = n->as.fcall_or_fdef.fbody;
             } break;
             case AST_BLOCK: {
                 fprintf(out, "v_%p[label=\"%s\"]\n", n, "block");
-                for (size_t j = 0; j < n->stmnt_count; ++j) {
-                    fprintf(out, "v_%p -- v_%p\n", n, n->stmnts[j]);
-                    queue[i++] = n->stmnts[j];
+                for (size_t j = 0; j < n->as.stmnts.stmnt_count; ++j) {
+                    fprintf(out, "v_%p -- v_%p\n", n, n->as.stmnts.stmnts[j]);
+                    queue[i++] = n->as.stmnts.stmnts[j];
                 }
             } break;
             case AST_FOR: {
-                fprintf(out, "v_%p[label=\"%s %s\"]\n", n, "for", n->lvar);
-                fprintf(out, "v_%p -- v_%p\n", n, n->lexpr);
-                fprintf(out, "v_%p -- v_%p\n", n, n->lbody);
-                queue[i++] = n->lexpr;
-                queue[i++] = n->lbody;
+                fprintf(out, "v_%p[label=\"%s %s\"]\n", n, "for", n->as.for_loop.lvar);
+                fprintf(out, "v_%p -- v_%p\n", n, n->as.for_loop.lexpr);
+                fprintf(out, "v_%p -- v_%p\n", n, n->as.for_loop.lbody);
+                queue[i++] = n->as.for_loop.lexpr;
+                queue[i++] = n->as.for_loop.lbody;
             } break;
             default:
                 error("%s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(n->type));
@@ -279,8 +279,8 @@ void parse_program(struct Parser* parser, struct AstNode* node) {
         }
     }
 
-    node->stmnt_count = arr.size;
-    node->stmnts = (struct AstNode**)arr.data;
+    node->as.stmnts.stmnt_count = arr.size;
+    node->as.stmnts.stmnts = (struct AstNode**)arr.data;
 
     while (parser->tok->type == TOK_EOL) {
         parser->tok++;
@@ -293,21 +293,21 @@ void parse_stmnt(struct Parser* parser, struct AstNode* node) {
         parser->tok++;
 
         expect(TOK_IDENTIFIER);
-        node->lvar = parser->tok->value;
+        node->as.for_loop.lvar = parser->tok->value;
         parser->tok++;
 
         expect(KW_in);
         parser->tok++;
 
-        node->lexpr = node_new();
-        parse_expr(parser, node->lexpr);
+        node->as.for_loop.lexpr = node_new();
+        parse_expr(parser, node->as.for_loop.lexpr);
 
         if (parser->tok->type == TOK_EOL) {
             parser->tok++;
         }
 
-        node->lbody = node_new();
-        parse_stmnt(parser, node->lbody);
+        node->as.for_loop.lbody = node_new();
+        parse_stmnt(parser, node->as.for_loop.lbody);
     } else {
         parse_expr(parser, node);
     }
@@ -331,9 +331,9 @@ void parse_sum(struct Parser* parser, struct AstNode* node) {
         *lhs = *node;
 
         node->type = AST_BINOP;
-        node->binop_type = op;
-        node->lhs = lhs;
-        node->rhs = rhs;
+        node->as.binop.binop_type = op;
+        node->as.binop.lhs = lhs;
+        node->as.binop.rhs = rhs;
     }
 }
 
@@ -351,19 +351,19 @@ void parse_term(struct Parser* parser, struct AstNode* node) {
         *lhs = *node;
 
         node->type = AST_BINOP;
-        node->binop_type = op;
-        node->lhs = lhs;
-        node->rhs = rhs;
+        node->as.binop.binop_type = op;
+        node->as.binop.lhs = lhs;
+        node->as.binop.rhs = rhs;
     }
 }
 
 void parse_factor(struct Parser* parser, struct AstNode* node) {
     if (parser->tok->type == TOK_MINUS || parser->tok->type == TOK_HASH) {
         node->type = AST_UNOP;
-        node->unop_type = parser->tok->type;
+        node->as.unop.unop_type = parser->tok->type;
         parser->tok++;
-        node->node = node_new();
-        parse_factor(parser, node->node);
+        node->as.unop.node = node_new();
+        parse_factor(parser, node->as.unop.node);
 
         return;
     }
@@ -374,37 +374,37 @@ void parse_factor(struct Parser* parser, struct AstNode* node) {
         struct AstNode* lhs = node_new();
         *lhs = *node;
         node->type = AST_BINOP;
-        node->binop_type = parser->tok->type;
-        node->lhs = lhs;
+        node->as.binop.binop_type = parser->tok->type;
+        node->as.binop.lhs = lhs;
         parser->tok++;
-        node->rhs = node_new();
-        parse_factor(parser, node->rhs);
+        node->as.binop.rhs = node_new();
+        parse_factor(parser, node->as.binop.rhs);
     }
 }
 
 void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
     switch (parser->tok->type) {
         case TOK_EQ: {
+            node->type = AST_ASSIGNMENT;
             Node_t* lhs = node_new();
             *lhs = *node;
-            node->ident = lhs;
-            node->type = AST_ASSIGNMENT;
+            node->as.assignment.ident = lhs;
             parser->tok++;
-            node->rvalue = node_new();
-            parse_expr(parser, node->rvalue);
+            node->as.assignment.rvalue = node_new();
+            parse_expr(parser, node->as.assignment.rvalue);
         } break;
         case TOK_LPAREN: {
             parser->tok++;
 
             node->type = AST_FCALL;
-            node->fname = node->name;
+            node->as.fcall_or_fdef.fname = node->as.identifier.name;
 
             if (parser->tok->type != TOK_RPAREN) {
                 struct AstNode* tmp = node_new();
-                tmp->item_count = 0;
+                tmp->as.items.item_count = 0;
                 parse_items(parser, tmp);
-                node->params = tmp->items;
-                node->param_count = tmp->item_count;
+                node->as.fcall_or_fdef.params = tmp->as.items.items;
+                node->as.fcall_or_fdef.param_count = tmp->as.items.item_count;
             }
 
             expect(TOK_RPAREN);
@@ -414,36 +414,36 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
                 parser->tok++;
 
                 node->type = AST_FDEF;
-                for (size_t ip = 0; ip < node->param_count; ++ip) {
-                    if (node->params[ip]->type != AST_IDENTIFIER) {
+                for (size_t ip = 0; ip < node->as.fcall_or_fdef.param_count; ++ip) {
+                    if (node->as.fcall_or_fdef.params[ip]->type != AST_IDENTIFIER) {
                         syntax_error("expected identifier but got %s\n",
-                                     node_type_to_str(node->params[ip]->type));
+                                     node_type_to_str(node->as.fcall_or_fdef.params[ip]->type));
                     }
                 }
-                node->fbody = node_new();
-                parse_expr(parser, node->fbody);
+                node->as.fcall_or_fdef.fbody = node_new();
+                parse_expr(parser, node->as.fcall_or_fdef.fbody);
             }
         } break;
         case TOK_LBRACKET: {
             parser->tok++;
 
             node->type = AST_IDX;
-            node->lname = node->name;
-            node->iexpr = node_new();
+            node->as.idx.lname = node->as.identifier.name;
+            node->as.idx.iexpr = node_new();
 
-            parse_expr(parser, node->iexpr);
+            parse_expr(parser, node->as.idx.iexpr);
             expect(TOK_RBRACKET);
             parser->tok++;
 
             if (parser->tok->type == TOK_EQ) {
                 parser->tok++;
 
-                struct AstNode* tmp = node_new();
-                *tmp = *node;
+                struct AstNode* lhs = node_new();
+                *lhs = *node;
                 node->type = AST_ASSIGNMENT;
-                node->ident = tmp;
-                node->rvalue = node_new();
-                parse_expr(parser, node->rvalue);
+                node->as.assignment.ident = lhs;
+                node->as.assignment.rvalue = node_new();
+                parse_expr(parser, node->as.assignment.rvalue);
             }
         } break;
         default:
@@ -466,8 +466,8 @@ void parse_items(struct Parser* parser, struct AstNode* node) {
         parse_expr(parser, tmp);
         ptrarr_append(&arr, tmp);
     }
-    node->items = (struct AstNode**)arr.data;
-    node->item_count = arr.size;
+    node->as.items.items = (struct AstNode**)arr.data;
+    node->as.items.item_count = arr.size;
 }
 
 void parse_block(struct Parser* parser, struct AstNode* node) {
@@ -495,8 +495,8 @@ void parse_block(struct Parser* parser, struct AstNode* node) {
         }
     }
 
-    node->stmnts = (struct AstNode**)arr.data;
-    node->stmnt_count = arr.size;
+    node->as.stmnts.stmnts = (struct AstNode**)arr.data;
+    node->as.stmnts.stmnt_count = arr.size;
 
     while (parser->tok->type == TOK_EOL) {
         parser->tok++;
@@ -510,7 +510,7 @@ void parse_atom(struct Parser* parser, struct AstNode* node) {
     switch (parser->tok->type) {
         case TOK_IDENTIFIER: {
             node->type = AST_IDENTIFIER;
-            node->name = parser->tok->value;
+            node->as.identifier.name = parser->tok->value;
             parser->tok++;
             parse_atom_ident_tail(parser, node);
         } break;
@@ -528,20 +528,20 @@ void parse_atom(struct Parser* parser, struct AstNode* node) {
         } break;
         case TOK_INTEGER: {
             node->type = AST_LITERAL;
-            node->value.type = V_INT;
-            node->value.int_value = atoll(parser->tok->value);
+            node->as.literal.value.type = V_INT;
+            node->as.literal.value.int_value = atoll(parser->tok->value);
             parser->tok++;
         } break;
         case TOK_FLOAT: {
             node->type = AST_LITERAL;
-            node->value.type = V_FLOAT;
-            node->value.float_value = atof(parser->tok->value);
+            node->as.literal.value.type = V_FLOAT;
+            node->as.literal.value.float_value = atof(parser->tok->value);
             parser->tok++;
         } break;
         case TOK_STRING: {
             node->type = AST_LITERAL;
-            node->value.type = V_STRING;
-            node->value.string_value = parser->tok->value;
+            node->as.literal.value.type = V_STRING;
+            node->as.literal.value.string_value = parser->tok->value;
             parser->tok++;
         } break;
         case TOK_LBRACE: {

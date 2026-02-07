@@ -186,15 +186,15 @@ Value_t eval_unop(Context_t* context, Unop_t op, Node_t* node) {
 
 Value_t eval_assignment(Context_t* context, Node_t* ident, Value_t value) {
     if (ident->type == AST_IDENTIFIER) {
-        set_value(context, ident->name, value);
+        set_value(context, ident->as.identifier.name, value);
     } else if (ident->type == AST_IDX) {
-        Value_t list = get_value(context, ident->lname);
+        Value_t list = get_value(context, ident->as.idx.lname);
         if (list.type == V_NIL) {
-            eval_error("did not find name in current context: %s\n", ident->lname);
+            eval_error("did not find name in current context: %s\n", ident->as.idx.lname);
         }
-        Value_t idx = eval(ident->iexpr, context);
+        Value_t idx = eval(ident->as.idx.iexpr, context);
         if (idx.type != V_INT) {
-            eval_error("cannot index using value type: %s\n", ident->lname);
+            eval_error("cannot index using value type: %s\n", ident->as.idx.lname);
         }
         list.list_value[idx.int_value] = value;
     } else {
@@ -254,7 +254,7 @@ Value_t eval_fdef(Context_t* context, const char* fname, Node_t** params, size_t
         if (params[i]->type != AST_IDENTIFIER) {
             eval_error("expected identifier but got %s\n", node_type_to_str(params[i]->type));
         }
-        names[i] = params[i]->name;
+        names[i] = params[i]->as.identifier.name;
     }
 
     struct EvalFunc* ef = malloc(sizeof(struct EvalFunc));
@@ -290,27 +290,27 @@ Value_t eval_for(Context_t* context, const char* name, Node_t* expr, Node_t* bod
 struct AstValue eval(struct AstNode* node, struct Context* context) {
     switch (node->type) {
         case AST_LITERAL:
-            return node->value;
+            return node->as.literal.value;
         case AST_BINOP:
-            return eval_binop(context, node->binop_type, node->lhs, node->rhs);
+            return eval_binop(context, node->as.binop.binop_type, node->as.binop.lhs, node->as.binop.rhs);
         case AST_UNOP:
-            return eval_unop(context, node->unop_type, node->node);
+            return eval_unop(context, node->as.unop.unop_type, node->as.unop.node);
         case AST_IDENTIFIER:
-            return eval_identifier(context, node->name);
+            return eval_identifier(context, node->as.identifier.name);
         case AST_ASSIGNMENT:
-            return eval_assignment(context, node->ident, eval(node->rvalue, context));
+            return eval_assignment(context, node->as.assignment.ident, eval(node->as.assignment.rvalue, context));
         case AST_PROGRAM:
-            return eval_stmnts(context, node->stmnts, node->stmnt_count);
+            return eval_stmnts(context, node->as.stmnts.stmnts, node->as.stmnts.stmnt_count);
         case AST_ITEMS:
-            return eval_items(context, node->items, node->item_count);
+            return eval_items(context, node->as.items.items, node->as.items.item_count);
         case AST_FCALL:
-            return eval_fcall(context, node->fname, node->params, node->param_count);
+            return eval_fcall(context, node->as.fcall_or_fdef.fname, node->as.fcall_or_fdef.params, node->as.fcall_or_fdef.param_count);
         case AST_FDEF:
-            return eval_fdef(context, node->fname, node->params, node->param_count, node->fbody);
+            return eval_fdef(context, node->as.fcall_or_fdef.fname, node->as.fcall_or_fdef.params, node->as.fcall_or_fdef.param_count, node->as.fcall_or_fdef.fbody);
         case AST_BLOCK:
-            return eval_stmnts(context, node->stmnts, node->stmnt_count);
+            return eval_stmnts(context, node->as.stmnts.stmnts, node->as.stmnts.stmnt_count);
         case AST_FOR:
-            return eval_for(context, node->lvar, node->lexpr, node->lbody);
+            return eval_for(context, node->as.for_loop.lvar, node->as.for_loop.lexpr, node->as.for_loop.lbody);
         default:
             fprintf(stderr, "eval_error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
                     node_type_to_str(node->type));
