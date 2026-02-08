@@ -139,7 +139,7 @@ void draw_ast(Node_t* root) {
             } break;
             case AST_FOR: {
                 fprintf(out, "v_%p[label=\"%s %s\"]\n", n, "for", n->lvar);
-                fprintf(out, "v_%p -- v_%p\n", n, n->lexpr);
+                fprintf(out, "v_%p -- v_%p [label=\"%s\"]\n", n, n->lexpr, "in");
                 fprintf(out, "v_%p -- v_%p\n", n, n->lbody);
                 queue[i++] = n->lexpr;
                 queue[i++] = n->lbody;
