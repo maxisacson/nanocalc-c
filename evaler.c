@@ -12,6 +12,21 @@ typedef struct Context Context_t;
 
 const Value_t NIL = {.type = V_NIL};
 
+double as_float(Value_t value) {
+    switch (value.type) {
+        case V_INT:
+            return (double)value.int_value;
+        case V_FLOAT:
+            return value.float_value;
+        default:
+            eval_error("%s: cannot cast to float: %s\n", __PRETTY_FUNCTION__, value_type_to_str(value.type));
+    }
+}
+
+size_t distance(long long a, long long b) {
+    return a < b ? (size_t)(b - a) : (size_t)(a - b);
+}
+
 struct Map new_map() {
     struct Map map;
     map.capacity = 128;
@@ -287,6 +302,149 @@ Value_t eval_for(Context_t* context, const char* name, Node_t* expr, Node_t* bod
     return value;
 }
 
+Value_t make_float_range_count(double xstart, double xstop, size_t xcount) {
+    Value_t value = {.type = V_LIST};
+
+    double xstep = (xstop - xstart) / (xcount - 1);
+    value.list_size = xcount;
+    value.list_value = malloc(xcount * sizeof(Value_t));
+
+    for (size_t i = 0; i < xcount; ++i) {
+        Value_t val = {.type = V_FLOAT, .float_value = xstart + i * xstep};
+        value.list_value[i] = val;
+    }
+
+    return value;
+}
+
+Value_t make_int_range_count(long long xstart, long long xstop, size_t xcount) {
+    Value_t value = {.type = V_LIST};
+    value.list_size = xcount;
+    value.list_value = malloc(xcount * sizeof(Value_t));
+
+    size_t divs = xcount - 1;
+    size_t dist = distance(xstart, xstop);
+    lldiv_t div = lldiv(dist, divs);
+
+    if (div.rem != 0) {
+        return make_float_range_count((double)xstart, (double)xstop, xcount);
+    }
+
+    long long step = 0;
+    if (xstart < xstop) {
+        step = div.quot;
+    } else {
+        step = -div.quot;
+    }
+
+    for (size_t i = 0; i < xcount; ++i) {
+        Value_t val = {.type = V_INT, .int_value = xstart + i * step};
+        value.list_value[i] = val;
+    }
+
+    return value;
+}
+
+Value_t make_int_range_step(long long xstart, long long xstop, long long step) {
+    Value_t value = {.type = V_LIST};
+
+    if (step < 0) {
+        step = -step;
+    }
+
+    size_t dist = distance(xstart, xstop);
+    size_t npoints = dist / step + 1;
+
+    if (xstart > xstop) {
+        step = -step;
+    }
+
+    value.list_size = npoints;
+    value.list_value = malloc(npoints * sizeof(Value_t));
+
+    for (size_t i = 0; i < npoints; ++i) {
+        Value_t val = {.type = V_INT, .int_value = xstart + i * step};
+        value.list_value[i] = val;
+    }
+
+    return value;
+}
+
+Value_t make_float_range_step(double xstart, double xstop, double step) {
+    Value_t value = {.type = V_LIST};
+
+    step = fabs(step);
+    double dist = fabs(xstop - xstart);
+    size_t npoints = (size_t)(dist / step) + 1;
+
+    if (xstart > xstop) {
+        step = -step;
+    }
+
+    value.list_size = npoints;
+    value.list_value = malloc(npoints * sizeof(Value_t));
+
+    for (size_t i = 0; i < npoints; ++i) {
+        Value_t val = {.type = V_FLOAT, .float_value = xstart + i * step};
+        value.list_value[i] = val;
+    }
+
+    return value;
+}
+
+Value_t eval_range(Context_t* context, Node_t* start, Node_t* stop, Node_t* count, Node_t* step) {
+    Value_t vstart = eval(start, context);
+    Value_t vstop = eval(stop, context);
+
+    if ((vstart.type != V_INT && vstart.type != V_FLOAT) || (vstop.type != V_INT && vstop.type != V_FLOAT)) {
+        eval_error("incompatible types: %s and %s\n", value_type_to_str(vstart.type), value_type_to_str(vstop.type));
+    }
+
+    Value_t value = NIL;
+    value.type = V_LIST;
+
+    if (count) {
+        Value_t vcount = eval(count, context);
+
+        if (vcount.type != V_INT) {
+            eval_error("%s: expected count to be integer but got: %s\n", __PRETTY_FUNCTION__,
+                       value_type_to_str(vcount.type));
+        }
+
+        if (vstart.type == V_INT && vstop.type == V_INT) {
+            value = make_int_range_count(vstart.int_value, vstop.int_value, vcount.int_value);
+        } else {
+            value = make_float_range_count(as_float(vstart), as_float(vstop), vcount.int_value);
+        }
+    } else if (step) {
+        Value_t vstep = eval(step, context);
+
+        if (vstep.type != V_INT && vstep.type != V_FLOAT) {
+            eval_error("%s: expected step to be integer or float but got: %s\n", __PRETTY_FUNCTION__,
+                       value_type_to_str(vstep.type));
+        }
+
+        if (vstart.type == V_INT && vstop.type == V_INT) {
+            if (vstep.type == V_INT) {
+                value = make_int_range_step(vstart.int_value, vstop.int_value, vstep.int_value);
+            } else {
+                value = make_float_range_step(as_float(vstart), as_float(vstop), as_float(vstep));
+            }
+        } else {
+            value = make_float_range_step(as_float(vstart), as_float(vstop), as_float(vstep));
+        }
+    } else {
+        if (vstart.type == V_INT && vstop.type == V_INT) {
+            size_t count = distance(vstart.int_value, vstop.int_value) + 1;
+            value = make_int_range_count(vstart.int_value, vstop.int_value, count);
+        } else {
+            value = make_float_range_count(as_float(vstart), as_float(vstop), 100);
+        }
+    }
+
+    return value;
+}
+
 struct AstValue eval(struct AstNode* node, struct Context* context) {
     switch (node->type) {
         case AST_LITERAL:
@@ -311,6 +469,8 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
             return eval_stmnts(context, node->stmnts, node->stmnt_count);
         case AST_FOR:
             return eval_for(context, node->lvar, node->lexpr, node->lbody);
+        case AST_RANGE:
+            return eval_range(context, node->rstart, node->rstop, node->rcount, node->rstep);
         default:
             fprintf(stderr, "eval_error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
                     node_type_to_str(node->type));

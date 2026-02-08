@@ -16,7 +16,8 @@
     X(AST_FDEF)       \
     X(AST_IDX)        \
     X(AST_BLOCK)      \
-    X(AST_FOR)
+    X(AST_FOR)        \
+    X(AST_RANGE)
 
 enum NodeType {
 #define X(x) x,
@@ -126,6 +127,14 @@ struct AstNode {
             const char* lvar;
             struct AstNode* lexpr;
             struct AstNode* lbody;
+        };
+
+        // AST_RANGE
+        struct {
+            struct AstNode* rstart;
+            struct AstNode* rstop;
+            struct AstNode* rcount;
+            struct AstNode* rstep;
         };
     };
 };

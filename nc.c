@@ -42,15 +42,15 @@ int main(int argc, const char* argv[]) {
     parser.tokens = tokens;
     parser.tok = tokens;
 
-    struct AstNode root;
-    parse(&parser, &root);
-
     while (tokens->type != TOK_EOF) {
         printf("%s ", tok_to_str(*tokens++));
     }
 
     printf("%s ", tok_to_str(*tokens++));
     printf("\n");
+
+    struct AstNode root;
+    parse(&parser, &root);
 
     struct Context context = context_new(NULL);
 

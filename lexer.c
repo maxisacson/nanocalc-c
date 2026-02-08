@@ -126,8 +126,13 @@ void tok_number(struct TokenArray* arr, const char** ptr) {
     }
 
     if (**ptr == '.') {
-        string_append_ch(&value, *(*ptr)++);
-        tt = TOK_FLOAT;
+        if (*(*ptr + 1) != '.') {
+            string_append_ch(&value, *(*ptr)++);
+            tt = TOK_FLOAT;
+        } else if (*(*ptr + 2) == '.') {
+            string_append_ch(&value, *(*ptr)++);
+            tt = TOK_FLOAT;
+        }
     }
 
     while ('0' <= **ptr && **ptr <= '9') {
@@ -240,7 +245,7 @@ int tokenize(const char* string, struct Token* tokens[]) {
                 }
                 break;
             case '-':
-                if (*peek == '.' || '0' <= *peek && *peek <= '9') {
+                if (*peek == '.' || ('0' <= *peek && *peek <= '9')) {
                     tok_number(&arr, &s);
                 } else {
                     ta_append(&arr, TOK_MINUS, 0);
@@ -304,7 +309,12 @@ int tokenize(const char* string, struct Token* tokens[]) {
                 ++s;
                 break;
             case '.':
-                tok_number(&arr, &s);
+                if (*peek == '.') {
+                    ta_append(&arr, TOK_DOTDOT, 0);
+                    s += 2;
+                } else {
+                    tok_number(&arr, &s);
+                }
                 break;
             default:
                 if ('0' <= *s && *s <= '9') {

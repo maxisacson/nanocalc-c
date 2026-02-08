@@ -144,6 +144,20 @@ void draw_ast(Node_t* root) {
                 queue[i++] = n->lexpr;
                 queue[i++] = n->lbody;
             } break;
+            case AST_RANGE: {
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, "range");
+                fprintf(out, "v_%p -- v_%p [label=\"%s\"]\n", n, n->rstart, "start");
+                fprintf(out, "v_%p -- v_%p [label=\"%s\"]\n", n, n->rstop, "stop");
+                queue[i++] = n->rstart;
+                queue[i++] = n->rstop;
+                if (n->rcount) {
+                    fprintf(out, "v_%p -- v_%p [label=\"%s\"]\n", n, n->rcount, "count");
+                    queue[i++] = n->rcount;
+                } else if (n->rstep) {
+                    fprintf(out, "v_%p -- v_%p [label=\"%s\"]\n", n, n->rstep, "step");
+                    queue[i++] = n->rstep;
+                }
+            } break;
             default:
                 error("%s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(n->type));
         };
@@ -315,6 +329,33 @@ void parse_stmnt(struct Parser* parser, struct AstNode* node) {
 
 void parse_expr(struct Parser* parser, struct AstNode* node) {
     parse_sum(parser, node);
+
+    if (parser->tok->type == TOK_DOTDOT) {
+
+        struct AstNode* start = node_new();
+        *start = *node;
+
+        node->type = AST_RANGE;
+        node->rstart = start;
+        node->rcount = NULL;
+        node->rstep = NULL;
+
+        parser->tok++;
+        node->rstop = node_new();
+        parse_sum(parser, node->rstop);
+
+        if (parser->tok->type == TOK_DOTDOT) {
+            parser->tok++;
+            struct AstNode* tmp = node_new();
+            if (parser->tok->type == TOK_PLUS) {
+                parser->tok++;
+                node->rstep = tmp;
+            } else {
+                node->rcount = tmp;
+            }
+            parse_sum(parser, tmp);
+        }
+    }
 }
 
 void parse_sum(struct Parser* parser, struct AstNode* node) {

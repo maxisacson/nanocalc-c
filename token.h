@@ -52,6 +52,7 @@
     X(TOK_FLOAT)      \
     X(TOK_STRING)     \
     X(TOK_IDENTIFIER) \
+    X(TOK_DOTDOT)     \
     X(TOK_EOF)        \
     X(KW_if)          \
     X(KW_and)         \
