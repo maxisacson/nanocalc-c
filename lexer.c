@@ -55,14 +55,14 @@ enum TokenType tok_cmd_to_tt(const char* str) {
 const char* tok_to_str(struct Token t) {
     const char* tt = tok_type_to_str(t.type);
 
-    String s = {};
+    StringBuilder sb = {};
     if (t.value) {
         const char* strs[] = {tt, "(", t.value, ")"};
-        s = string_join("", strs, 4);
+        sb = sb_join("", strs, 4);
     } else {
-        string_set(&s, tt);
+        sb_append(&sb, tt);
     }
-    return s.data;
+    return sb_string(&sb);
 }
 
 const char* tok_type_to_str(enum TokenType tok_type) {
@@ -113,73 +113,75 @@ int ta_append(struct TokenArray* arr, enum TokenType type, const char* value) {
 }
 
 void tok_number(struct TokenArray* arr, const char** ptr) {
-    String value = {};
+    const char* start = *ptr;
 
     enum TokenType tt = TOK_INTEGER;
 
     if (**ptr == '-') {
-        string_append_ch(&value, *(*ptr)++);
+        (*ptr)++;
     }
 
     while ('0' <= **ptr && **ptr <= '9') {
-        string_append_ch(&value, *(*ptr)++);
+        (*ptr)++;
     }
 
     if (**ptr == '.') {
         if (*(*ptr + 1) != '.') {
-            string_append_ch(&value, *(*ptr)++);
+            (*ptr)++;
             tt = TOK_FLOAT;
         } else if (*(*ptr + 2) == '.') {
-            string_append_ch(&value, *(*ptr)++);
+            (*ptr)++;
             tt = TOK_FLOAT;
         }
     }
 
     while ('0' <= **ptr && **ptr <= '9') {
-        string_append_ch(&value, *(*ptr)++);
+        (*ptr)++;
     }
 
     if (**ptr == 'e' || **ptr == 'E') {
-        string_append_ch(&value, *(*ptr)++);
+        (*ptr)++;
         if (**ptr == '-') {
-            string_append_ch(&value, *(*ptr)++);
+            (*ptr)++;
         }
         tt = TOK_FLOAT;
     }
 
     while ('0' <= **ptr && **ptr <= '9') {
-        string_append_ch(&value, *(*ptr)++);
+        (*ptr)++;
     }
 
-    ta_append(arr, tt, value.data);
+    const char* value = strndup(start, *ptr - start);
+
+    ta_append(arr, tt, value);
 }
 
 void tok_ident_or_keyword(struct TokenArray* arr, const char** ptr) {
-    String value = {};
-
+    const char* start = *ptr;
     while (isalnum(**ptr) || **ptr == '_') {
-        string_append_ch(&value, *(*ptr)++);
+        (*ptr)++;
     }
+    const char* name = strndup(start, *ptr - start);
 
-    if (tok_is_keyword(value.data)) {
-        ta_append(arr, tok_kw_to_tt(value.data), 0);
-    } else if (tok_is_command(value.data)) {
-        ta_append(arr, tok_cmd_to_tt(value.data), 0);
+    if (tok_is_keyword(name)) {
+        ta_append(arr, tok_kw_to_tt(name), 0);
+    } else if (tok_is_command(name)) {
+        ta_append(arr, tok_cmd_to_tt(name), 0);
     } else {
-        ta_append(arr, TOK_IDENTIFIER, value.data);
+        ta_append(arr, TOK_IDENTIFIER, name);
     }
 }
 
 void tok_string(struct TokenArray* arr, const char** ptr) {
-    String value = {};
-
     ++*ptr;
+    const char* start = *ptr;
     while (**ptr && **ptr != '"') {
-        string_append_ch(&value, *(*ptr)++);
+        (*ptr)++;
     }
+    const char* value = strndup(start, *ptr - start);
     ++*ptr;
 
-    ta_append(arr, TOK_STRING, value.data);
+    ta_append(arr, TOK_STRING, value);
 }
 
 int tokenize(const char* string, struct Token* tokens[]) {

@@ -195,38 +195,41 @@ const char* value_type_to_str(enum ValueType value_type) {
 }
 
 const char* ast_value_to_str(struct AstValue* value) {
-    String s = {};
-    string_reserve(&s, 128);
+    StringBuilder sb = {};
 
     switch (value->type) {
         case V_NIL:
-            sprintf(s.data, "nil");
+            sb_append(&sb, "nil");
             break;
-        case V_INT:
-            sprintf(s.data, "%lld", value->int_value);
-            break;
-        case V_FLOAT:
-            sprintf(s.data, "%f", value->float_value);
-            break;
+        case V_INT: {
+            char* buf = malloc(256 * sizeof(char));
+            sprintf(buf, "%lld", value->int_value);
+            sb_append(&sb, buf);
+        } break;
+        case V_FLOAT: {
+            char* buf = malloc(256 * sizeof(char));
+            sprintf(buf, "%f", value->float_value);
+            sb_append(&sb, buf);
+        } break;
         case V_STRING: {
-            string_set(&s, value->string_value);
+            sb_append(&sb, value->string_value);
         } break;
         case V_LIST: {
-            string_set(&s, "[");
+            sb_append(&sb, "[");
             for (size_t i = 0; i < value->list_size; ++i) {
                 if (i > 0) {
-                    string_append(&s, ", ");
+                    sb_append(&sb, ", ");
                 }
-                string_append(&s, ast_value_to_str(value->list_value + i));
+                sb_append(&sb, ast_value_to_str(value->list_value + i));
             }
-            string_append(&s, "]");
+            sb_append(&sb, "]");
         } break;
         default:
             fprintf(stderr, "error: %s: unknown value type: %d\n", __PRETTY_FUNCTION__, value->type);
             exit(1);
     }
 
-    return s.data;
+    return sb_string(&sb);
 }
 
 const char* binop_type_to_str(enum TokenType binop_type) {
@@ -331,7 +334,6 @@ void parse_expr(struct Parser* parser, struct AstNode* node) {
     parse_sum(parser, node);
 
     if (parser->tok->type == TOK_DOTDOT) {
-
         struct AstNode* start = node_new();
         *start = *node;
 
@@ -457,8 +459,7 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
                 node->type = AST_FDEF;
                 for (size_t ip = 0; ip < node->param_count; ++ip) {
                     if (node->params[ip]->type != AST_IDENTIFIER) {
-                        syntax_error("expected identifier but got %s\n",
-                                     node_type_to_str(node->params[ip]->type));
+                        syntax_error("expected identifier but got %s\n", node_type_to_str(node->params[ip]->type));
                     }
                 }
                 node->fbody = node_new();

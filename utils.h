@@ -21,22 +21,20 @@
     abort()
 
 typedef struct {
-    char* data;
+    const char** data;
     size_t size;
     size_t capacity;
-} String;
+} StringBuilder;
 
-void string_append(String* s, const char* str);
-void string_append_v(String* s, size_t count, const char* strings[]);
-void string_append_ch(String* s, char c);
-void string_reserve(String* s, size_t size);
-void string_set(String* s, const char* str);
-String string_join(const char* sep, const char** strs, size_t strc);
+void sb_append(StringBuilder* sb, const char* str);
+void sb_append_v(StringBuilder* sb, size_t count, const char* strings[]);
+const char* sb_string(StringBuilder* sb);
+StringBuilder sb_join(const char* sep, const char** strs, size_t strc);
 
-#define string_append_n(s, n, ...)         \
+#define sb_append_n(s, n, ...)         \
     do {                                   \
         const char* tmp[] = {__VA_ARGS__}; \
-        string_append_v((s), (n), tmp);    \
+        sb_append_v((s), (n), tmp);    \
     } while (0);
 
 typedef struct {

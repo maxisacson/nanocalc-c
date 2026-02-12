@@ -1,86 +1,59 @@
 #include "utils.h"
 #include <string.h>
 
-void string_reserve_exact(String* s, size_t size) {
-    if (s->capacity == 0) {
-        s->capacity = 32;
-        s->data = (char*)calloc(s->capacity, 0);
-    } else if (s->capacity < size + 1) {
-        s->capacity = size + 1;
-        s->data = realloc(s->data, s->capacity);
-        memset(s->data + s->size, 0, s->capacity - s->size);
-    }
-}
-
-void string_set(String* s, const char* str) {
-    size_t len = strlen(str);
-    string_reserve_exact(s, len);
-    memcpy(s->data, str, len);
-    s->size = len;
-    s->data[len] = 0;
-}
-
-void string_append(String* s, const char* str) {
-    size_t len = strlen(str);
-    string_reserve(s, s->size + len);
-    memcpy(s->data + s->size, str, len);
-    s->size += len;
-}
-
-void string_append_ch(String* s, char c) {
-    string_reserve(s, s->size + 1);
-    s->data[s->size++] = c;
-}
-
-void string_reserve(String* s, size_t size) {
-    if (s->capacity == 0) {
-        s->capacity = 32;
-        s->data = (char*)calloc(s->capacity, 0);
+void sb_append(StringBuilder* sb, const char* str) {
+    if (sb->capacity == 0) {
+        sb->capacity = 16;
+        sb->data = malloc(sb->capacity * sizeof(const char*));
     }
 
-    size_t cap = s->capacity;
-    while (cap < size + 1) {
+    size_t cap = sb->capacity;
+    while (sb->size >= cap) {
         cap *= 2;
     }
 
-    if (cap != s->capacity) {
-        s->capacity = cap;
-        s->data = realloc(s->data, s->capacity);
-        memset(s->data + s->size, 0, s->capacity - s->size);
+    if (cap != sb->capacity) {
+        sb->capacity = cap;
+        sb->data = realloc(sb->data, sb->capacity);
     }
+
+    sb->data[sb->size++] = str;
 }
 
-String string_join(const char* sep, const char** strs, size_t strc) {
-    size_t total = 0;
-    for (size_t i = 0; i < strc; ++i) {
-        total += strlen(strs[i]);
-    }
-    total += (strc - 1) * strlen(sep);
-
-    String s = {};
-    string_reserve_exact(&s, total);
+StringBuilder sb_join(const char* sep, const char** strs, size_t strc) {
+    StringBuilder sb = {};
 
     for (size_t i = 0; i < strc; ++i) {
         if (i > 0) {
-            string_append(&s, sep);
+            sb_append(&sb, sep);
         }
-        string_append(&s, strs[i]);
+        sb_append(&sb, strs[i]);
     }
 
-    return s;
+    return sb;
 }
 
-void string_append_v(String* s, size_t count, const char* strings[]) {
-    size_t total = s->size;
+void sb_append_v(StringBuilder* sb, size_t count, const char* strings[]) {
     for (size_t i = 0; i < count; ++i) {
-        total += strlen(strings[i]);
+        sb_append(sb, strings[i]);
+    }
+}
+
+const char* sb_string(StringBuilder* sb) {
+    size_t total = 0;
+    for (size_t i = 0; i < sb->size; ++i) {
+        total += strlen(sb->data[i]);
     }
 
-    string_reserve_exact(s, total);
-
-    for (size_t i = 0; i < count; ++i) {
-        string_append(s, strings[i]);
+    char* str = malloc((total + 1) * sizeof(char));
+    char* pos = str;
+    for (size_t i = 0; i < sb->size; ++i) {
+        size_t len = strlen(sb->data[i]);
+        memcpy(pos, sb->data[i], len);
+        pos += len;
     }
+    *pos = '\0';
+    return str;
 }
 
 void ptrarr_append(PtrArr* a, void* data) {

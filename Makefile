@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS_COMMON=-Wall -Wextra
+CFLAGS_COMMON=-Wall -Wextra -std=c23
 CFLAGS_DBG=$(CFLAGS_COMMON) -g
 CFLAGS=$(CFLAGS_COMMON) -Werror -O3
 LIBS=-lm
