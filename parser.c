@@ -325,6 +325,22 @@ void parse_stmnt(struct Parser* parser, struct AstNode* node) {
 
         node->lbody = node_new();
         parse_stmnt(parser, node->lbody);
+    } else if (parser->tok->type == TOK_CMD) {
+        node->type = AST_CMD;
+        node->cmd = parser->tok->value;
+        node->carg_count = 0;
+        parser->tok++;
+
+        PtrArr arr = {};
+        struct AstNode* tmp;
+        while (parser->tok->type != TOK_EOL && parser->tok->type != TOK_EOF) {
+            tmp = node_new();
+            parse_expr(parser, tmp);
+            ptrarr_append(&arr, tmp);
+        }
+
+        node->cargs = (struct AstNode**)arr.data;
+        node->carg_count = arr.size;
     } else {
         parse_expr(parser, node);
     }

@@ -17,7 +17,8 @@
     X(AST_IDX)        \
     X(AST_BLOCK)      \
     X(AST_FOR)        \
-    X(AST_RANGE)
+    X(AST_RANGE)      \
+    X(AST_CMD)
 
 enum NodeType {
 #define X(x) x,
@@ -135,6 +136,13 @@ struct AstNode {
             struct AstNode* rstop;
             struct AstNode* rcount;
             struct AstNode* rstep;
+        };
+
+        // AST_CMD
+        struct {
+            const char* cmd;
+            struct AstNode** cargs;
+            size_t carg_count;
         };
     };
 };

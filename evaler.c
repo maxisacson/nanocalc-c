@@ -9,8 +9,58 @@ typedef enum TokenType Unop_t;
 typedef struct AstValue Value_t;
 typedef struct AstNode Node_t;
 typedef struct Context Context_t;
+typedef Value_t (*Cmd_t)(Context_t*, Node_t**, size_t);
 
 const Value_t NIL = {.type = V_NIL};
+
+Value_t cmd_print(Context_t* context, Node_t** args, size_t arg_count) {
+    for (size_t i = 0; i < arg_count; ++i) {
+        Value_t value = eval(args[i], context);
+        if (value.type == V_RANGE) {
+            bool first = true;
+            Range_t* range = value.range_value;
+            printf("[");
+            for (Value_t val = next(range); !range->done; val = next(range)) {
+                if (!first) {
+                    printf(", ");
+                }
+                const char* out = ast_value_to_str(&val);
+                printf("%s", out);
+                first = false;
+            }
+            printf("]");
+        } else {
+            if (i > 0) {
+                printf(" ");
+            }
+            const char* out = ast_value_to_str(&value);
+            printf("%s", out);
+        }
+    }
+    printf("\n");
+
+    return NIL;
+};
+
+typedef struct {
+    const char* name;
+    Cmd_t cmd;
+} CmdItem_t;
+
+const CmdItem_t commands[] = {
+    {"print", cmd_print},
+};
+
+Cmd_t get_cmd(const char* name) {
+    size_t count = sizeof(commands) / sizeof(commands[0]);
+    for (size_t i = 0; i < count; ++i) {
+        if (strcmp(name, commands[i].name) == 0) {
+            return commands[i].cmd;
+        }
+    }
+
+    return NULL;
+};
 
 double as_float(Value_t value) {
     switch (value.type) {
@@ -73,22 +123,22 @@ void set_value(Context_t* context, const char* name, struct AstValue value) {
     context->map.items[context->map.size++] = item;
 }
 
-#define apply_binop(op)                                                                                              \
-    if (lhs.type == V_INT && rhs.type == V_INT) {                                                                    \
-        result.type = V_INT;                                                                                         \
-        result.int_value = lhs.int_value op rhs.int_value;                                                           \
-    } else if (lhs.type == V_INT && rhs.type == V_FLOAT) {                                                           \
-        result.type = V_FLOAT;                                                                                       \
-        result.float_value = lhs.int_value op rhs.float_value;                                                       \
-    } else if (lhs.type == V_FLOAT && rhs.type == V_INT) {                                                           \
-        result.type = V_FLOAT;                                                                                       \
-        result.float_value = lhs.float_value op rhs.int_value;                                                       \
-    } else if (lhs.type == V_FLOAT && rhs.type == V_FLOAT) {                                                         \
-        result.type = V_FLOAT;                                                                                       \
-        result.float_value = lhs.float_value op rhs.float_value;                                                     \
-    } else {                                                                                                         \
-        fprintf(stderr, "eval_error: %s: incompatible types: %d and %d\n", __PRETTY_FUNCTION__, lhs.type, rhs.type); \
-        exit(1);                                                                                                     \
+#define apply_binop(op)                                                                                     \
+    if (lhs.type == V_INT && rhs.type == V_INT) {                                                           \
+        result.type = V_INT;                                                                                \
+        result.int_value = lhs.int_value op rhs.int_value;                                                  \
+    } else if (lhs.type == V_INT && rhs.type == V_FLOAT) {                                                  \
+        result.type = V_FLOAT;                                                                              \
+        result.float_value = lhs.int_value op rhs.float_value;                                              \
+    } else if (lhs.type == V_FLOAT && rhs.type == V_INT) {                                                  \
+        result.type = V_FLOAT;                                                                              \
+        result.float_value = lhs.float_value op rhs.int_value;                                              \
+    } else if (lhs.type == V_FLOAT && rhs.type == V_FLOAT) {                                                \
+        result.type = V_FLOAT;                                                                              \
+        result.float_value = lhs.float_value op rhs.float_value;                                            \
+    } else {                                                                                                \
+        eval_error("%s: incompatible types: %s and %s\n", __PRETTY_FUNCTION__, value_type_to_str(lhs.type), \
+                   value_type_to_str(rhs.type));                                                            \
     }
 
 Value_t eval_plus(Value_t lhs, Value_t rhs) {
@@ -445,6 +495,12 @@ Value_t eval_range(Context_t* context, Node_t* start, Node_t* stop, Node_t* coun
     return value;
 }
 
+Value_t eval_cmd(Context_t* context, const char* name, Node_t** args, size_t arg_count) {
+    Cmd_t cmd = get_cmd(name);
+    Value_t value = cmd(context, args, arg_count);
+    return value;
+};
+
 struct AstValue eval(struct AstNode* node, struct Context* context) {
     switch (node->type) {
         case AST_LITERAL:
@@ -471,6 +527,8 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
             return eval_for(context, node->lvar, node->lexpr, node->lbody);
         case AST_RANGE:
             return eval_range(context, node->rstart, node->rstop, node->rcount, node->rstep);
+        case AST_CMD:
+            return eval_cmd(context, node->cmd, node->cargs, node->carg_count);
         default:
             fprintf(stderr, "eval_error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
                     node_type_to_str(node->type));

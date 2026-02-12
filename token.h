@@ -54,6 +54,7 @@
     X(TOK_IDENTIFIER) \
     X(TOK_DOTDOT)     \
     X(TOK_EOF)        \
+    X(TOK_CMD)        \
     X(KW_if)          \
     X(KW_and)         \
     X(KW_or)          \

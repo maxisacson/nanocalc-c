@@ -166,7 +166,7 @@ void tok_ident_or_keyword(struct TokenArray* arr, const char** ptr) {
     if (tok_is_keyword(name)) {
         ta_append(arr, tok_kw_to_tt(name), 0);
     } else if (tok_is_command(name)) {
-        ta_append(arr, tok_cmd_to_tt(name), 0);
+        ta_append(arr, TOK_CMD, name);
     } else {
         ta_append(arr, TOK_IDENTIFIER, name);
     }
