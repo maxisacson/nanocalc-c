@@ -16,7 +16,10 @@
     fprintf(stderr, "eval_error: " __VA_ARGS__); \
     exit(1)
 
-#define unreachable_code() \
+#define incompatible_types(typea, typeb) \
+    eval_error("incompatible types: %s and %s\n", value_type_to_str(typea), value_type_to_str(typeb));
+
+#define unreachable_code()                                                                     \
     fprintf(stderr, "unreachable_code: %s: %s:%d\n", __PRETTY_FUNCTION__, __FILE__, __LINE__); \
     abort()
 
@@ -44,5 +47,7 @@ typedef struct {
 } PtrArr;
 
 void ptrarr_append(PtrArr* array, void* data);
+
+#define UNDEF_SIZE (size_t)(-1)
 
 #endif

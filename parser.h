@@ -1,6 +1,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include <stdbool.h>
 #include "token.h"
 
 #define NODE_TYPES    \
@@ -32,6 +33,7 @@ enum NodeType {
     X(V_FLOAT)      \
     X(V_STRING)     \
     X(V_LIST)       \
+    X(V_RANGE)      \
     X(V_CALLABLE)
 
 enum ValueType {
@@ -39,6 +41,8 @@ enum ValueType {
     VALUE_TYPES
 #undef X
 };
+
+struct RangeValue;
 
 struct AstValue {
     enum ValueType type;
@@ -59,10 +63,22 @@ struct AstValue {
         };
 
         // V_CALLABLE
-        struct {
-            void* data;
-        };
+        void* data;
+
+        // V_RANGE
+        struct RangeValue* range_value;
     };
+};
+
+struct RangeValue {
+    struct AstValue start;
+    struct AstValue stop;
+    struct AstValue value;
+    struct AstValue step;
+    size_t count;
+    size_t length;
+    bool done;
+    bool started;
 };
 
 struct AstNode {

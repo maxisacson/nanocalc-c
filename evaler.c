@@ -1,5 +1,6 @@
 #include "evaler.h"
 #include <math.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include "utils.h"
@@ -9,9 +10,12 @@ typedef enum TokenType Unop_t;
 typedef struct AstValue Value_t;
 typedef struct AstNode Node_t;
 typedef struct Context Context_t;
+typedef struct RangeValue Range_t;
 typedef Value_t (*Cmd_t)(Context_t*, Node_t**, size_t);
 
 const Value_t NIL = {.type = V_NIL};
+
+Value_t range_next(Range_t*);
 
 Value_t cmd_print(Context_t* context, Node_t** args, size_t arg_count) {
     for (size_t i = 0; i < arg_count; ++i) {
@@ -20,7 +24,7 @@ Value_t cmd_print(Context_t* context, Node_t** args, size_t arg_count) {
             bool first = true;
             Range_t* range = value.range_value;
             printf("[");
-            for (Value_t val = next(range); !range->done; val = next(range)) {
+            for (Value_t val = range_next(range); !range->done; val = range_next(range)) {
                 if (!first) {
                     printf(", ");
                 }
@@ -71,6 +75,16 @@ double as_float(Value_t value) {
         default:
             eval_error("%s: cannot cast to float: %s\n", __PRETTY_FUNCTION__, value_type_to_str(value.type));
     }
+}
+
+Value_t make_int(long long x) {
+    Value_t value = {.type = V_INT, .int_value = x};
+    return value;
+}
+
+Value_t make_float(double x) {
+    Value_t value = {.type = V_FLOAT, .float_value = x};
+    return value;
 }
 
 size_t distance(long long a, long long b) {
@@ -221,6 +235,82 @@ Value_t eval_unary_minus(Value_t val) {
     return result;
 }
 
+bool is_negative(Value_t value) {
+    switch (value.type) {
+        case V_INT:
+            return value.int_value < 0;
+        case V_FLOAT:
+            return value.float_value < 0;
+        default:
+            eval_error("%s: incompatible type: %s\n", __PRETTY_FUNCTION__, value_type_to_str(value.type));
+    };
+}
+
+bool in_range(Value_t value, Value_t begin, Value_t end) {
+    Value_t diff = eval_minus(end, begin);
+    if (is_negative(diff)) {
+        Value_t tmp = begin;
+        begin = end;
+        end = tmp;
+    }
+    Value_t diff1 = eval_minus(value, begin);
+    Value_t diff2 = eval_minus(end, value);
+
+    if (is_negative(diff1) || is_negative(diff2)) {
+        return false;
+    }
+
+    return true;
+}
+
+Range_t* range_new(Value_t start, Value_t stop, Value_t step, size_t length) {
+    Range_t* range = malloc(sizeof(Range_t));
+    range->start = start;
+    range->stop = stop;
+    range->step = step;
+    range->value = NIL;
+    range->count = 0;
+    range->length = length;
+    range->done = false;
+    range->started = false;
+    return range;
+}
+
+Value_t range_next(Range_t* range) {
+    if (range->done) {
+        eval_error("%s: attempt to call next on an exhausted range\n", __PRETTY_FUNCTION__);
+    }
+
+    if (range->length != UNDEF_SIZE) {
+        if (range->count == range->length) {
+            range->value = NIL;
+            range->done = true;
+        } else if (range->count + 1 == range->length) {
+            range->value = range->stop;
+        } else if (range->started) {
+            range->value = eval_plus(range->value, range->step);
+        } else {
+            range->value = range->start;
+            range->started = true;
+        }
+        range->count++;
+    } else {
+        if (range->started) {
+            range->value = eval_plus(range->value, range->step);
+        } else {
+            range->value = range->start;
+            range->started = true;
+        }
+
+        if (!in_range(range->value, range->start, range->stop)) {
+            range->value = NIL;
+            range->done = true;
+        }
+    }
+
+    return range->value;
+}
+
 Value_t eval_binop(Context_t* context, Binop_t op, Node_t* lhs, Node_t* rhs) {
     switch (op) {
         case TOK_PLUS:
@@ -335,17 +425,42 @@ Value_t eval_fdef(Context_t* context, const char* fname, Node_t** params, size_t
     return NIL;
 }
 
+// bool is_gt(Value_t value, Value_t target) {
+//     if (value.type == V_INT && target.type == V_INT) {
+//         return value.int_value > target.int_value;
+//     }
+//     else if (value.type == V_INT && target.type == V_FLOAT) {
+//         return value.int_value > target.float_value;
+//     }
+//     else if (value.type == V_FLOAT && target.type == V_INT) {
+//         return value.float_value > target.int_value;
+//     }
+//     else if (value.type == V_FLOAT && target.type == V_FLOAT) {
+//         return value.float_value > target.float_value;
+//     } else {
+//         incompatible_types(value.type, target.type);
+//     }
+// };
+
 Value_t eval_for(Context_t* context, const char* name, Node_t* expr, Node_t* body) {
     Value_t values = eval(expr, context);
 
-    if (values.type != V_LIST) {
-        set_value(context, name, values);
-        return eval(body, context);
-    }
-
     Value_t value = NIL;
-    for (size_t i = 0; i < values.list_size; ++i) {
-        set_value(context, name, values.list_value[i]);
+
+    if (values.type == V_LIST) {
+        for (size_t i = 0; i < values.list_size; ++i) {
+            set_value(context, name, values.list_value[i]);
+            value = eval(body, context);
+        }
+
+    } else if (values.type == V_RANGE) {
+        Range_t* range = values.range_value;
+        for (Value_t val = range_next(range); !range->done; val = range_next(range)) {
+            set_value(context, name, val);
+            value = eval(body, context);
+        }
+    } else {
+        set_value(context, name, values);
         value = eval(body, context);
     }
 
@@ -353,24 +468,16 @@ Value_t eval_for(Context_t* context, const char* name, Node_t* expr, Node_t* bod
 }
 
 Value_t make_float_range_count(double xstart, double xstop, size_t xcount) {
-    Value_t value = {.type = V_LIST};
+    Value_t value = {.type = V_RANGE};
 
     double xstep = (xstop - xstart) / (xcount - 1);
-    value.list_size = xcount;
-    value.list_value = malloc(xcount * sizeof(Value_t));
-
-    for (size_t i = 0; i < xcount; ++i) {
-        Value_t val = {.type = V_FLOAT, .float_value = xstart + i * xstep};
-        value.list_value[i] = val;
-    }
+    value.range_value = range_new(make_float(xstart), make_float(xstop), make_float(xstep), xcount);
 
     return value;
 }
 
 Value_t make_int_range_count(long long xstart, long long xstop, size_t xcount) {
-    Value_t value = {.type = V_LIST};
-    value.list_size = xcount;
-    value.list_value = malloc(xcount * sizeof(Value_t));
+    Value_t value = {.type = V_RANGE};
 
     size_t divs = xcount - 1;
     size_t dist = distance(xstart, xstop);
@@ -387,71 +494,49 @@ Value_t make_int_range_count(long long xstart, long long xstop, size_t xcount) {
         step = -div.quot;
     }
 
-    for (size_t i = 0; i < xcount; ++i) {
-        Value_t val = {.type = V_INT, .int_value = xstart + i * step};
-        value.list_value[i] = val;
-    }
+    value.range_value = range_new(make_int(xstart), make_int(xstop), make_int(step), xcount);
 
     return value;
 }
 
 Value_t make_int_range_step(long long xstart, long long xstop, long long step) {
-    Value_t value = {.type = V_LIST};
+    Value_t value = {.type = V_RANGE};
 
     if (step < 0) {
         step = -step;
     }
 
-    size_t dist = distance(xstart, xstop);
-    size_t npoints = dist / step + 1;
-
     if (xstart > xstop) {
         step = -step;
     }
 
-    value.list_size = npoints;
-    value.list_value = malloc(npoints * sizeof(Value_t));
-
-    for (size_t i = 0; i < npoints; ++i) {
-        Value_t val = {.type = V_INT, .int_value = xstart + i * step};
-        value.list_value[i] = val;
-    }
+    value.range_value = range_new(make_int(xstart), make_int(xstop), make_int(step), UNDEF_SIZE);
 
     return value;
 }
 
 Value_t make_float_range_step(double xstart, double xstop, double step) {
-    Value_t value = {.type = V_LIST};
+    Value_t value = {.type = V_RANGE};
 
     step = fabs(step);
-    double dist = fabs(xstop - xstart);
-    size_t npoints = (size_t)(dist / step) + 1;
-
     if (xstart > xstop) {
         step = -step;
     }
 
-    value.list_size = npoints;
-    value.list_value = malloc(npoints * sizeof(Value_t));
-
-    for (size_t i = 0; i < npoints; ++i) {
-        Value_t val = {.type = V_FLOAT, .float_value = xstart + i * step};
-        value.list_value[i] = val;
-    }
+    value.range_value = range_new(make_float(xstart), make_float(xstop), make_float(step), UNDEF_SIZE);
 
     return value;
 }
 
 Value_t eval_range(Context_t* context, Node_t* start, Node_t* stop, Node_t* count, Node_t* step) {
+    Value_t value = NIL;
+
     Value_t vstart = eval(start, context);
     Value_t vstop = eval(stop, context);
 
     if ((vstart.type != V_INT && vstart.type != V_FLOAT) || (vstop.type != V_INT && vstop.type != V_FLOAT)) {
         eval_error("incompatible types: %s and %s\n", value_type_to_str(vstart.type), value_type_to_str(vstop.type));
     }
-
-    Value_t value = NIL;
-    value.type = V_LIST;
 
     if (count) {
         Value_t vcount = eval(count, context);
@@ -474,19 +559,14 @@ Value_t eval_range(Context_t* context, Node_t* start, Node_t* stop, Node_t* coun
                        value_type_to_str(vstep.type));
         }
 
-        if (vstart.type == V_INT && vstop.type == V_INT) {
-            if (vstep.type == V_INT) {
-                value = make_int_range_step(vstart.int_value, vstop.int_value, vstep.int_value);
-            } else {
-                value = make_float_range_step(as_float(vstart), as_float(vstop), as_float(vstep));
-            }
+        if (vstart.type == V_INT && vstop.type == V_INT && vstep.type == V_INT) {
+            value = make_int_range_step(vstart.int_value, vstop.int_value, vstep.int_value);
         } else {
             value = make_float_range_step(as_float(vstart), as_float(vstop), as_float(vstep));
         }
     } else {
         if (vstart.type == V_INT && vstop.type == V_INT) {
-            size_t count = distance(vstart.int_value, vstop.int_value) + 1;
-            value = make_int_range_count(vstart.int_value, vstop.int_value, count);
+            value = make_int_range_step(vstart.int_value, vstop.int_value, 1);
         } else {
             value = make_float_range_count(as_float(vstart), as_float(vstop), 100);
         }

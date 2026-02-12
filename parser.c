@@ -224,9 +224,13 @@ const char* ast_value_to_str(struct AstValue* value) {
             }
             sb_append(&sb, "]");
         } break;
+        case V_RANGE: {
+            sb_append(&sb, ast_value_to_str(&value->range_value->start));
+            sb_append(&sb, "..");
+            sb_append(&sb, ast_value_to_str(&value->range_value->stop));
+        } break;
         default:
-            fprintf(stderr, "error: %s: unknown value type: %d\n", __PRETTY_FUNCTION__, value->type);
-            exit(1);
+            error("%s: unknown value type: %s\n", __PRETTY_FUNCTION__, value_type_to_str(value->type));
     }
 
     return sb_string(&sb);

@@ -62,7 +62,7 @@ int main(int argc, const char* argv[]) {
     const char* out = ast_value_to_str(&result);
     printf("%s\n", out);
 
-    draw_ast(&root);
+    // draw_ast(&root);
 
     return 0;
 }
