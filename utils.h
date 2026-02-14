@@ -4,15 +4,20 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+#define lineno() fprintf(stderr, "%s:%d -> %s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__)
+
 #define error(...)                          \
+    lineno();                               \
     fprintf(stderr, "error: " __VA_ARGS__); \
     exit(1)
 
 #define syntax_error(...)                          \
+    lineno();                                      \
     fprintf(stderr, "syntax_error: " __VA_ARGS__); \
     exit(1)
 
 #define eval_error(...)                          \
+    lineno();                                    \
     fprintf(stderr, "eval_error: " __VA_ARGS__); \
     exit(1)
 
@@ -34,10 +39,10 @@ void sb_append_v(StringBuilder* sb, size_t count, const char* strings[]);
 const char* sb_string(StringBuilder* sb);
 StringBuilder sb_join(const char* sep, const char** strs, size_t strc);
 
-#define sb_append_n(s, n, ...)         \
+#define sb_append_n(s, n, ...)             \
     do {                                   \
         const char* tmp[] = {__VA_ARGS__}; \
-        sb_append_v((s), (n), tmp);    \
+        sb_append_v((s), (n), tmp);        \
     } while (0);
 
 typedef struct {

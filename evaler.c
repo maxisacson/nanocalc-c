@@ -14,6 +14,7 @@ typedef struct RangeValue Range_t;
 typedef Value_t (*Cmd_t)(Context_t*, Node_t**, size_t);
 
 const Value_t NIL = {.type = V_NIL};
+const Value_t INF = {.type = V_INF, .int_value = 1};
 
 Value_t range_next(Range_t*);
 
@@ -73,7 +74,7 @@ double as_float(Value_t value) {
         case V_FLOAT:
             return value.float_value;
         default:
-            eval_error("%s: cannot cast to float: %s\n", __PRETTY_FUNCTION__, value_type_to_str(value.type));
+            eval_error("cannot cast to float: %s\n", value_type_to_str(value.type));
     }
 }
 
@@ -137,22 +138,21 @@ void set_value(Context_t* context, const char* name, struct AstValue value) {
     context->map.items[context->map.size++] = item;
 }
 
-#define apply_binop(op)                                                                                     \
-    if (lhs.type == V_INT && rhs.type == V_INT) {                                                           \
-        result.type = V_INT;                                                                                \
-        result.int_value = lhs.int_value op rhs.int_value;                                                  \
-    } else if (lhs.type == V_INT && rhs.type == V_FLOAT) {                                                  \
-        result.type = V_FLOAT;                                                                              \
-        result.float_value = lhs.int_value op rhs.float_value;                                              \
-    } else if (lhs.type == V_FLOAT && rhs.type == V_INT) {                                                  \
-        result.type = V_FLOAT;                                                                              \
-        result.float_value = lhs.float_value op rhs.int_value;                                              \
-    } else if (lhs.type == V_FLOAT && rhs.type == V_FLOAT) {                                                \
-        result.type = V_FLOAT;                                                                              \
-        result.float_value = lhs.float_value op rhs.float_value;                                            \
-    } else {                                                                                                \
-        eval_error("%s: incompatible types: %s and %s\n", __PRETTY_FUNCTION__, value_type_to_str(lhs.type), \
-                   value_type_to_str(rhs.type));                                                            \
+#define apply_binop(op)                                                                                          \
+    if (lhs.type == V_INT && rhs.type == V_INT) {                                                                \
+        result.type = V_INT;                                                                                     \
+        result.int_value = lhs.int_value op rhs.int_value;                                                       \
+    } else if (lhs.type == V_INT && rhs.type == V_FLOAT) {                                                       \
+        result.type = V_FLOAT;                                                                                   \
+        result.float_value = lhs.int_value op rhs.float_value;                                                   \
+    } else if (lhs.type == V_FLOAT && rhs.type == V_INT) {                                                       \
+        result.type = V_FLOAT;                                                                                   \
+        result.float_value = lhs.float_value op rhs.int_value;                                                   \
+    } else if (lhs.type == V_FLOAT && rhs.type == V_FLOAT) {                                                     \
+        result.type = V_FLOAT;                                                                                   \
+        result.float_value = lhs.float_value op rhs.float_value;                                                 \
+    } else {                                                                                                     \
+        eval_error("incompatible types: %s and %s\n", value_type_to_str(lhs.type), value_type_to_str(rhs.type)); \
     }
 
 Value_t eval_plus(Value_t lhs, Value_t rhs) {
@@ -194,7 +194,7 @@ Value_t eval_mod(Value_t lhs, Value_t rhs) {
         result.type = V_FLOAT;
         result.float_value = fmod(lhs.float_value, rhs.float_value);
     } else {
-        fprintf(stderr, "eval_error: %s: incompatible types: %d and %d\n", __PRETTY_FUNCTION__, lhs.type, rhs.type);
+        fprintf(stderr, "eval_error: incompatible types: %d and %d\n", lhs.type, rhs.type);
         exit(1);
     }
     return result;
@@ -216,7 +216,7 @@ Value_t eval_power(Value_t lhs, Value_t rhs) {
         result.type = V_FLOAT;
         result.float_value = pow(lhs.float_value, rhs.float_value);
     } else {
-        fprintf(stderr, "eval_error: %s: incompatible types: %d and %d\n", __PRETTY_FUNCTION__, lhs.type, rhs.type);
+        fprintf(stderr, "eval_error: incompatible types: %d and %d\n", lhs.type, rhs.type);
         exit(1);
     }
 
@@ -242,11 +242,15 @@ bool is_negative(Value_t value) {
         case V_FLOAT:
             return value.float_value < 0;
         default:
-            eval_error("%s: incompatible type: %s\n", __PRETTY_FUNCTION__, value_type_to_str(value.type));
+            eval_error("incompatible type: %s\n", value_type_to_str(value.type));
     };
 }
 
 bool in_range(Value_t value, Value_t begin, Value_t end) {
+    if (end.type == V_INF) {
+        return true;
+    }
+
     Value_t diff = eval_minus(end, begin);
     if (is_negative(diff)) {
         Value_t tmp = begin;
@@ -278,7 +282,7 @@ Range_t* range_new(Value_t start, Value_t stop, Value_t step, size_t length) {
 
 Value_t range_next(Range_t* range) {
     if (range->done) {
-        eval_error("%s: attempt to call next on an exhausted range\n", __PRETTY_FUNCTION__);
+        eval_error("attempt to call next on an exhausted range\n");
     }
 
     if (range->length != UNDEF_SIZE) {
@@ -425,23 +429,6 @@ Value_t eval_fdef(Context_t* context, const char* fname, Node_t** params, size_t
     return NIL;
 }
 
-// bool is_gt(Value_t value, Value_t target) {
-//     if (value.type == V_INT && target.type == V_INT) {
-//         return value.int_value > target.int_value;
-//     }
-//     else if (value.type == V_INT && target.type == V_FLOAT) {
-//         return value.int_value > target.float_value;
-//     }
-//     else if (value.type == V_FLOAT && target.type == V_INT) {
-//         return value.float_value > target.int_value;
-//     }
-//     else if (value.type == V_FLOAT && target.type == V_FLOAT) {
-//         return value.float_value > target.float_value;
-//     } else {
-//         incompatible_types(value.type, target.type);
-//     }
-// };
-
 Value_t eval_for(Context_t* context, const char* name, Node_t* expr, Node_t* body) {
     Value_t values = eval(expr, context);
 
@@ -515,6 +502,18 @@ Value_t make_int_range_step(long long xstart, long long xstop, long long step) {
     return value;
 }
 
+Value_t make_int_range_inf(long long xstart, long long step) {
+    Value_t value = {.type = V_RANGE};
+
+    if (step < 0) {
+        step = -step;
+    }
+
+    value.range_value = range_new(make_int(xstart), INF, make_int(step), UNDEF_SIZE);
+
+    return value;
+}
+
 Value_t make_float_range_step(double xstart, double xstop, double step) {
     Value_t value = {.type = V_RANGE};
 
@@ -528,11 +527,55 @@ Value_t make_float_range_step(double xstart, double xstop, double step) {
     return value;
 }
 
+Value_t make_float_range_inf(double xstart, double step) {
+    Value_t value = {.type = V_RANGE};
+
+    step = fabs(step);
+
+    value.range_value = range_new(make_float(xstart), INF, make_float(step), UNDEF_SIZE);
+
+    return value;
+}
+
+
 Value_t eval_range(Context_t* context, Node_t* start, Node_t* stop, Node_t* count, Node_t* step) {
     Value_t value = NIL;
 
     Value_t vstart = eval(start, context);
     Value_t vstop = eval(stop, context);
+
+    if (vstop.type == V_INF) {
+        if (count) {
+            Value_t vcount = eval(count, context);
+            if (vcount.type != V_INT) {
+                eval_error("expected count to be integer but got: %s\n", value_type_to_str(vcount.type));
+            }
+
+            if (vstart.type == V_INT) {
+                long long xstop = vstart.int_value + vcount.int_value - 1;
+                value = make_int_range_count(vstart.int_value, xstop, vcount.int_value);
+            } else {
+                double xstop = vstart.float_value + vcount.int_value - 1;
+                value = make_float_range_count(as_float(vstart), xstop, vcount.int_value);
+            }
+        } else if (step) {
+            Value_t vstep = eval(step, context);
+
+            if (vstart.type == V_INT && vstep.type == V_INT) {
+                value = make_int_range_inf(vstart.int_value, vstep.int_value);
+            } else {
+                value = make_float_range_inf(as_float(vstart), as_float(vstep));
+            }
+        } else {
+            if (vstart.type == V_INT) {
+                value = make_int_range_inf(vstart.int_value, 1);
+            } else {
+                value = make_float_range_inf(as_float(vstart), 1.0);
+            }
+        }
+
+        return value;
+    }
 
     if ((vstart.type != V_INT && vstart.type != V_FLOAT) || (vstop.type != V_INT && vstop.type != V_FLOAT)) {
         eval_error("incompatible types: %s and %s\n", value_type_to_str(vstart.type), value_type_to_str(vstop.type));
@@ -540,10 +583,8 @@ Value_t eval_range(Context_t* context, Node_t* start, Node_t* stop, Node_t* coun
 
     if (count) {
         Value_t vcount = eval(count, context);
-
         if (vcount.type != V_INT) {
-            eval_error("%s: expected count to be integer but got: %s\n", __PRETTY_FUNCTION__,
-                       value_type_to_str(vcount.type));
+            eval_error("expected count to be integer but got: %s\n", value_type_to_str(vcount.type));
         }
 
         if (vstart.type == V_INT && vstop.type == V_INT) {
@@ -555,8 +596,7 @@ Value_t eval_range(Context_t* context, Node_t* start, Node_t* stop, Node_t* coun
         Value_t vstep = eval(step, context);
 
         if (vstep.type != V_INT && vstep.type != V_FLOAT) {
-            eval_error("%s: expected step to be integer or float but got: %s\n", __PRETTY_FUNCTION__,
-                       value_type_to_str(vstep.type));
+            eval_error("expected step to be integer or float but got: %s\n", value_type_to_str(vstep.type));
         }
 
         if (vstart.type == V_INT && vstop.type == V_INT && vstep.type == V_INT) {
@@ -610,8 +650,7 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
         case AST_CMD:
             return eval_cmd(context, node->cmd, node->cargs, node->carg_count);
         default:
-            fprintf(stderr, "eval_error: %s: unknown AST node type: %s\n", __PRETTY_FUNCTION__,
-                    node_type_to_str(node->type));
+            eval_error("unknown AST node type: %s\n", node_type_to_str(node->type));
             exit(1);
     };
 }

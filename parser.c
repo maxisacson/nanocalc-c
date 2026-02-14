@@ -606,6 +606,12 @@ void parse_atom(struct Parser* parser, struct AstNode* node) {
             node->value.string_value = parser->tok->value;
             parser->tok++;
         } break;
+        case KW_Inf: {
+            node->type = AST_LITERAL;
+            node->value.type = V_INF;
+            node->value.int_value = 1;
+            parser->tok++;
+        } break;
         case TOK_LBRACE: {
             parse_block(parser, node);
         } break;

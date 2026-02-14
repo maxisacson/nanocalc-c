@@ -34,6 +34,7 @@ enum NodeType {
     X(V_STRING)     \
     X(V_LIST)       \
     X(V_RANGE)      \
+    X(V_INF)        \
     X(V_CALLABLE)
 
 enum ValueType {
