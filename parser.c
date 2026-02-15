@@ -6,13 +6,14 @@ stmnt:
   | 'for', 'identifier', 'in', expr, 'eol'?, stmnt
   | 'command', expr*
   | expr, [ 'if', expr ]
-expr: disj, [ '..', disj, [ '..', ('+' | '-')?, disj ] ]
+expr: disj
 disj: conj, { 'or', conj }
 conj: neg, { 'and', neg }
 neg:
   | 'not', neg
   | comp
-comp: sum, { '<' | '>' | '<=' | '>=' | '==' | '!=', sum }
+comp: range, { '<' | '>' | '<=' | '>=' | '==' | '!=', range }
+range: sum, [ '..', sum, [ '..', '+'?, sum ] ]
 sum: term, { '+' | '-', term }
 term: factor, { '*' | '/' | '%', factor }
 factor:
@@ -350,7 +351,28 @@ void parse_stmnt(struct Parser* parser, struct AstNode* node) {
     }
 }
 
+
 void parse_expr(struct Parser* parser, struct AstNode* node) {
+    return parse_disj(parser, node);
+}
+
+void parse_disj(struct Parser* parser, struct AstNode* node) {
+    return parse_conj(parser, node);
+}
+
+void parse_conj(struct Parser* parser, struct AstNode* node) {
+    return parse_neg(parser, node);
+}
+
+void parse_neg(struct Parser* parser, struct AstNode* node) {
+    return parse_comp(parser, node);
+}
+
+void parse_comp(struct Parser* parser, struct AstNode* node) {
+    return parse_range(parser, node);
+}
+
+void parse_range(struct Parser* parser, struct AstNode* node) {
     parse_sum(parser, node);
 
     if (parser->tok->type == TOK_DOTDOT) {
