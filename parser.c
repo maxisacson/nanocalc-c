@@ -159,6 +159,13 @@ void draw_ast(Node_t* root) {
                     queue[i++] = n->rstep;
                 }
             } break;
+            case AST_CMD: {
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, n->cmd);
+                for (size_t j = 0; j < n->carg_count; ++j) {
+                    fprintf(out, "v_%p -- v_%p\n", n, n->cargs[j]);
+                    queue[i++] = n->cargs[j];
+                }
+            } break;
             default:
                 error("%s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(n->type));
         };
