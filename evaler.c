@@ -246,6 +246,17 @@ bool is_negative(Value_t value) {
     };
 }
 
+bool is_truthy(Value_t value) {
+    switch (value.type) {
+        case V_INT:
+            return value.int_value != 0;
+        case V_FLOAT:
+            return value.float_value != 0;
+        default:
+            return false;
+    }
+}
+
 bool in_range(Value_t value, Value_t begin, Value_t end) {
     if (end.type == V_INF) {
         return true;
@@ -537,7 +548,6 @@ Value_t make_float_range_inf(double xstart, double step) {
     return value;
 }
 
-
 Value_t eval_range(Context_t* context, Node_t* start, Node_t* stop, Node_t* count, Node_t* step) {
     Value_t value = NIL;
 
@@ -621,6 +631,31 @@ Value_t eval_cmd(Context_t* context, const char* name, Node_t** args, size_t arg
     return value;
 };
 
+Value_t eval_case(Context_t* context, Node_t* expr, Node_t* pred) {
+    Value_t value = NIL;
+
+    Value_t p = eval(pred, context);
+    if (is_truthy(p)) {
+        value = eval(expr, context);
+    }
+
+    return value;
+};
+
+Value_t eval_cases(Context_t* context, Node_t** stmnts, size_t stmnt_count) {
+    Value_t result = NIL;
+
+    for (size_t i = 0; i < stmnt_count; ++i) {
+        result = eval(stmnts[i], context);
+        if (result.type != V_NIL) {
+            return result;
+        }
+    }
+
+    return result;
+}
+
+
 struct AstValue eval(struct AstNode* node, struct Context* context) {
     switch (node->type) {
         case AST_LITERAL:
@@ -649,6 +684,10 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
             return eval_range(context, node->rstart, node->rstop, node->rcount, node->rstep);
         case AST_CMD:
             return eval_cmd(context, node->cmd, node->cargs, node->carg_count);
+        case AST_CASE:
+            return eval_case(context, node->cexpr, node->pred);
+        case AST_CASES:
+            return eval_cases(context, node->stmnts, node->stmnt_count);
         default:
             eval_error("unknown AST node type: %s\n", node_type_to_str(node->type));
             exit(1);

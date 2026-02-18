@@ -19,6 +19,8 @@
     X(AST_BLOCK)      \
     X(AST_FOR)        \
     X(AST_RANGE)      \
+    X(AST_CASE)       \
+    X(AST_CASES)      \
     X(AST_CMD)
 
 enum NodeType {
@@ -112,7 +114,7 @@ struct AstNode {
             struct AstNode* rvalue;
         };
 
-        // AST_PROGRAM / AST_BLOCK
+        // AST_PROGRAM / AST_BLOCK / AST_CASES
         struct {
             struct AstNode** stmnts;
             size_t stmnt_count;
@@ -160,6 +162,12 @@ struct AstNode {
             const char* cmd;
             struct AstNode** cargs;
             size_t carg_count;
+        };
+
+        // AST_CASE
+        struct {
+            struct AstNode* cexpr;
+            struct AstNode* pred;
         };
     };
 };

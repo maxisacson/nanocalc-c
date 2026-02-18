@@ -166,6 +166,20 @@ void draw_ast(Node_t* root) {
                     queue[i++] = n->cargs[j];
                 }
             } break;
+            case AST_CASE: {
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, "case");
+                fprintf(out, "v_%p -- v_%p\n", n, n->cexpr);
+                fprintf(out, "v_%p -- v_%p [label=\"%s\"]\n", n, n->pred, "if");
+                queue[i++] = n->cexpr;
+                queue[i++] = n->pred;
+            } break;
+            case AST_CASES: {
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, "cases");
+                for (size_t j = 0; j < n->stmnt_count; ++j) {
+                    fprintf(out, "v_%p -- v_%p\n", n, n->stmnts[j]);
+                    queue[i++] = n->stmnts[j];
+                }
+            } break;
             default:
                 error("%s: unknown AST node type: %s\n", __PRETTY_FUNCTION__, node_type_to_str(n->type));
         };
@@ -355,6 +369,16 @@ void parse_stmnt(struct Parser* parser, struct AstNode* node) {
         node->carg_count = arr.size;
     } else {
         parse_expr(parser, node);
+
+        if (parser->tok->type == KW_if) {
+            parser->tok++;
+            struct AstNode* tmp = node_new();
+            *tmp = *node;
+            node->type = AST_CASE;
+            node->cexpr = tmp;
+            node->pred = node_new();
+            parse_expr(parser, node->pred);
+        }
     }
 }
 
@@ -578,6 +602,10 @@ void parse_block(struct Parser* parser, struct AstNode* node) {
         tmp = node_new();
         parse_stmnt(parser, tmp);
         ptrarr_append(&arr, tmp);
+
+        if (arr.size == 1 && tmp->type == AST_CASE) {
+            node->type = AST_CASES;
+        }
 
         expect3(TOK_RBRACE, TOK_SEMICOLON, TOK_EOL);
 

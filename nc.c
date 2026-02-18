@@ -6,7 +6,7 @@
 #include "parser.h"
 #include "evaler.h"
 
-#define BUFSIZE 4095 // pagesize - 1
+#define BUFSIZE 4095  // pagesize - 1
 
 const char* read_file(FILE* fd) {
     char buf[BUFSIZE];
@@ -54,15 +54,17 @@ int main(int argc, const char* argv[]) {
 
     struct Context context = context_new(NULL);
 
-    struct AstValue val = {.type=V_INT, .int_value = 42};
+    struct AstValue val = {.type = V_INT, .int_value = 42};
     set_value(&context, "x", val);
 
     struct AstValue result = eval(&root, &context);
 
-    const char* out = ast_value_to_str(&result);
-    printf("%s\n", out);
+    if (result.type != V_NIL) {
+        const char* out = ast_value_to_str(&result);
+        printf("%s\n", out);
+    }
 
-    // draw_ast(&root);
+    draw_ast(&root);
 
     return 0;
 }
