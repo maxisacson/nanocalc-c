@@ -414,6 +414,38 @@ Value_t range_next(Range_t* range) {
     return range->value;
 }
 
+Value_t range_to_list(Range_t* range) {
+    Value_t* values;
+    size_t cap;
+    size_t len = 0;
+
+    if (range->length != UNDEF_SIZE) {
+        cap = range->length;
+    } else if (range->start.type == V_INF || range->stop.type == V_INF) {
+        eval_error("cannot enumerate infinite range\n");
+    } else {
+        cap = 1;
+    }
+    values = malloc(cap * sizeof(Value_t));
+
+    for (Value_t val = range_next(range); !range->done; val = range_next(range)) {
+        if (len >= cap) {
+            cap *= 2;
+            values = realloc(values, cap * sizeof(Value_t));
+        }
+
+        values[len++] = val;
+    }
+
+    Value_t list = {
+        .type = V_LIST,
+        .list_size = len,
+        .list_value = values,
+    };
+
+    return list;
+}
+
 Value_t eval_binop(Context_t* context, Binop_t op, Node_t* lhs, Node_t* rhs) {
     switch (op) {
         case TOK_PLUS:
@@ -449,14 +481,36 @@ Value_t eval_binop(Context_t* context, Binop_t op, Node_t* lhs, Node_t* rhs) {
     };
 }
 
+Value_t eval_length(Value_t value) {
+    Value_t result = {.type = V_INT};
+    switch (value.type) {
+        case V_LIST: {
+            result.int_value = value.list_size;
+        } break;
+        case V_RANGE: {
+            Value_t list = range_to_list(value.range_value);
+            result.int_value = list.list_size;
+        } break;
+        case V_STRING: {
+            result.int_value = (long long)strlen(value.string_value);
+        } break;
+        default:
+            eval_error("value type has no defined length: %s\n", value_type_to_str(value.type));
+    }
+
+    return result;
+}
+
 Value_t eval_unop(Context_t* context, Unop_t op, Node_t* node) {
     switch (op) {
         case TOK_MINUS:
             return eval_unary_minus(eval(node, context));
         case TOK_BANG:
             return eval_unary_not(eval(node, context));
+        case TOK_HASH:
+            return eval_length(eval(node, context));
         default:
-            eval_error("unknown unop type: %d\n", op);
+            eval_error("unknown unop type: %s\n", tok_type_to_str(op));
     }
 }
 
