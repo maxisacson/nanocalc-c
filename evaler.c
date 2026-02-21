@@ -261,24 +261,28 @@ Value_t eval_power(Value_t lhs, Value_t rhs) {
     return result;
 }
 
-Value_t eval_or(Value_t lhs, Value_t rhs) {
-    if (is_truthy(lhs)) {
+Value_t eval_or(Context_t* context, Node_t* lhs, Node_t* rhs) {
+    Value_t lval = eval(lhs, context);
+    if (is_truthy(lval)) {
         return TRUE;
     }
 
-    if (is_truthy(rhs)) {
+    Value_t rval = eval(rhs, context);
+    if (is_truthy(rval)) {
         return TRUE;
     }
 
     return FALSE;
 }
 
-Value_t eval_and(Value_t lhs, Value_t rhs) {
-    if (!is_truthy(lhs)) {
+Value_t eval_and(Context_t* context, Node_t* lhs, Node_t* rhs) {
+    Value_t lval = eval(lhs, context);
+    if (!is_truthy(lval)) {
         return FALSE;
     }
 
-    if (!is_truthy(rhs)) {
+    Value_t rval = eval(rhs, context);
+    if (!is_truthy(rval)) {
         return FALSE;
     }
 
@@ -424,10 +428,6 @@ Value_t eval_binop(Context_t* context, Binop_t op, Node_t* lhs, Node_t* rhs) {
             return eval_mod(eval(lhs, context), eval(rhs, context));
         case TOK_POWER:
             return eval_power(eval(lhs, context), eval(rhs, context));
-        case TOK_PIPE:
-            return eval_or(eval(lhs, context), eval(rhs, context));
-        case TOK_AMP:
-            return eval_and(eval(lhs, context), eval(rhs, context));
         case TOK_LT:
             return eval_lt(eval(lhs, context), eval(rhs, context));
         case TOK_GT:
@@ -440,6 +440,10 @@ Value_t eval_binop(Context_t* context, Binop_t op, Node_t* lhs, Node_t* rhs) {
             return eval_eeq(eval(lhs, context), eval(rhs, context));
         case TOK_NEQ:
             return eval_neq(eval(lhs, context), eval(rhs, context));
+        case TOK_PIPE:
+            return eval_or(context, lhs, rhs);
+        case TOK_AMP:
+            return eval_and(context, lhs, rhs);
         default:
             eval_error("unknown binop type: %s\n", tok_type_to_str(op));
     };
