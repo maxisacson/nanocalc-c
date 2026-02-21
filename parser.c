@@ -8,16 +8,13 @@ stmnt:
   | expr, [ 'if', expr ]
 expr: disj
 disj: conj, { '|', conj }
-conj: neg, { '&', neg }
-neg:
-  | '!', neg
-  | comp
+conj: comp, { '&', comp }
 comp: range, { '<' | '>' | '<=' | '>=' | '==' | '!=', range }
 range: sum, [ '..', sum, [ '..', '+'?, sum ] ]
 sum: term, { '+' | '-', term }
 term: factor, { '*' | '/' | '%', factor }
 factor:
-  | ('-' | '#'), factor
+  | ('-' | '#', '!'), factor
   | atom, [ '^', factor ]
 atom:
   | 'identifier', atom_ident_tail?
@@ -405,7 +402,6 @@ void parse_stmnt(struct Parser* parser, struct AstNode* node) {
     }
 }
 
-
 void parse_expr(struct Parser* parser, struct AstNode* node) {
     return parse_disj(parser, node);
 }
@@ -426,7 +422,7 @@ void parse_disj(struct Parser* parser, struct AstNode* node) {
 }
 
 void parse_conj(struct Parser* parser, struct AstNode* node) {
-    parse_neg(parser, node);
+    parse_comp(parser, node);
 
     if (parser->tok->type == TOK_AMP) {
         struct AstNode* rhs = node_new();
@@ -436,24 +432,24 @@ void parse_conj(struct Parser* parser, struct AstNode* node) {
         node->rhs = node_new();
         node->binop_type = parser->tok->type;
         parser->tok++;
-        parse_neg(parser, node->rhs);
-    }
-}
-
-void parse_neg(struct Parser* parser, struct AstNode* node) {
-    if (parser->tok->type == TOK_BANG) {
-        node->type = AST_UNOP;
-        node->unop_type = parser->tok->type;
-        parser->tok++;
-        node->node = node_new();
-        parse_neg(parser, node->node);
-    } else {
-        parse_comp(parser, node);
+        parse_comp(parser, node->rhs);
     }
 }
 
 void parse_comp(struct Parser* parser, struct AstNode* node) {
-    return parse_range(parser, node);
+    parse_range(parser, node);
+
+    if (parser->tok->type == TOK_LT || parser->tok->type == TOK_GT || parser->tok->type == TOK_LEQ ||
+        parser->tok->type == TOK_GEQ || parser->tok->type == TOK_EEQ || parser->tok->type == TOK_NEQ) {
+        struct AstNode* rhs = node_new();
+        *rhs = *node;
+        node->type = AST_BINOP;
+        node->lhs = rhs;
+        node->rhs = node_new();
+        node->binop_type = parser->tok->type;
+        parser->tok++;
+        parse_range(parser, node->rhs);
+    }
 }
 
 void parse_range(struct Parser* parser, struct AstNode* node) {
@@ -527,27 +523,25 @@ void parse_term(struct Parser* parser, struct AstNode* node) {
 }
 
 void parse_factor(struct Parser* parser, struct AstNode* node) {
-    if (parser->tok->type == TOK_MINUS || parser->tok->type == TOK_HASH) {
+    if (parser->tok->type == TOK_MINUS || parser->tok->type == TOK_HASH || parser->tok->type == TOK_BANG) {
         node->type = AST_UNOP;
         node->unop_type = parser->tok->type;
         parser->tok++;
         node->node = node_new();
         parse_factor(parser, node->node);
+    } else {
+        parse_atom(parser, node);
 
-        return;
-    }
-
-    parse_atom(parser, node);
-
-    if (parser->tok->type == TOK_POWER) {
-        struct AstNode* lhs = node_new();
-        *lhs = *node;
-        node->type = AST_BINOP;
-        node->binop_type = parser->tok->type;
-        node->lhs = lhs;
-        parser->tok++;
-        node->rhs = node_new();
-        parse_factor(parser, node->rhs);
+        if (parser->tok->type == TOK_POWER) {
+            struct AstNode* lhs = node_new();
+            *lhs = *node;
+            node->type = AST_BINOP;
+            node->binop_type = parser->tok->type;
+            node->lhs = lhs;
+            parser->tok++;
+            node->rhs = node_new();
+            parse_factor(parser, node->rhs);
+        }
     }
 }
 

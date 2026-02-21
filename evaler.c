@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include "lexer.h"
 #include "utils.h"
 
 typedef enum TokenType Binop_t;
@@ -179,6 +180,19 @@ bool is_truthy(Value_t value) {
         eval_error("incompatible types: %s and %s\n", value_type_to_str(lhs.type), value_type_to_str(rhs.type)); \
     }
 
+#define apply_comp(op)                                                                                           \
+    if (lhs.type == V_INT && rhs.type == V_INT) {                                                                \
+        result = lhs.int_value op rhs.int_value ? TRUE : FALSE;                                                  \
+    } else if (lhs.type == V_INT && rhs.type == V_FLOAT) {                                                       \
+        result = lhs.int_value op rhs.float_value ? TRUE : FALSE;                                                \
+    } else if (lhs.type == V_FLOAT && rhs.type == V_INT) {                                                       \
+        result = lhs.float_value op rhs.int_value ? TRUE : FALSE;                                                \
+    } else if (lhs.type == V_FLOAT && rhs.type == V_FLOAT) {                                                     \
+        result = lhs.float_value op rhs.float_value ? TRUE : FALSE;                                              \
+    } else {                                                                                                     \
+        eval_error("incompatible types: %s and %s\n", value_type_to_str(lhs.type), value_type_to_str(rhs.type)); \
+    }
+
 Value_t eval_plus(Value_t lhs, Value_t rhs) {
     Value_t result;
     apply_binop(+);
@@ -269,6 +283,42 @@ Value_t eval_and(Value_t lhs, Value_t rhs) {
     }
 
     return TRUE;
+}
+
+Value_t eval_lt(Value_t lhs, Value_t rhs) {
+    Value_t result;
+    apply_comp(<);
+    return result;
+}
+
+Value_t eval_gt(Value_t lhs, Value_t rhs) {
+    Value_t result;
+    apply_comp(>);
+    return result;
+}
+
+Value_t eval_leq(Value_t lhs, Value_t rhs) {
+    Value_t result;
+    apply_comp(<=);
+    return result;
+}
+
+Value_t eval_geq(Value_t lhs, Value_t rhs) {
+    Value_t result;
+    apply_comp(>=);
+    return result;
+}
+
+Value_t eval_eeq(Value_t lhs, Value_t rhs) {
+    Value_t result;
+    apply_comp(==);
+    return result;
+}
+
+Value_t eval_neq(Value_t lhs, Value_t rhs) {
+    Value_t result;
+    apply_comp(!=);
+    return result;
 }
 
 Value_t eval_unary_minus(Value_t val) {
@@ -378,8 +428,20 @@ Value_t eval_binop(Context_t* context, Binop_t op, Node_t* lhs, Node_t* rhs) {
             return eval_or(eval(lhs, context), eval(rhs, context));
         case TOK_AMP:
             return eval_and(eval(lhs, context), eval(rhs, context));
+        case TOK_LT:
+            return eval_lt(eval(lhs, context), eval(rhs, context));
+        case TOK_GT:
+            return eval_gt(eval(lhs, context), eval(rhs, context));
+        case TOK_LEQ:
+            return eval_leq(eval(lhs, context), eval(rhs, context));
+        case TOK_GEQ:
+            return eval_geq(eval(lhs, context), eval(rhs, context));
+        case TOK_EEQ:
+            return eval_eeq(eval(lhs, context), eval(rhs, context));
+        case TOK_NEQ:
+            return eval_neq(eval(lhs, context), eval(rhs, context));
         default:
-            eval_error("unknown binop type: %d\n", op);
+            eval_error("unknown binop type: %s\n", tok_type_to_str(op));
     };
 }
 
@@ -694,7 +756,6 @@ Value_t eval_cases(Context_t* context, Node_t** stmnts, size_t stmnt_count) {
 
     return result;
 }
-
 
 struct AstValue eval(struct AstNode* node, struct Context* context) {
     switch (node->type) {
