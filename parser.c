@@ -7,10 +7,10 @@ stmnt:
   | 'command', expr*
   | expr, [ 'if', expr ]
 expr: disj
-disj: conj, { 'or', conj }
-conj: neg, { 'and', neg }
+disj: conj, { '|', conj }
+conj: neg, { '&', neg }
 neg:
-  | 'not', neg
+  | '!', neg
   | comp
 comp: range, { '<' | '>' | '<=' | '>=' | '==' | '!=', range }
 range: sum, [ '..', sum, [ '..', '+'?, sum ] ]
@@ -87,6 +87,11 @@ void draw_ast(Node_t* root) {
                 fprintf(out, "v_%p -- v_%p\n", n, n->rhs);
                 queue[i++] = n->lhs;
                 queue[i++] = n->rhs;
+            } break;
+            case AST_UNOP: {
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, unop_type_to_str(n->unop_type));
+                fprintf(out, "v_%p -- v_%p\n", n, n->node);
+                queue[i++] = n->node;
             } break;
             case AST_IDENTIFIER: {
                 fprintf(out, "v_%p[label=\"%s\"]\n", n, n->name);
@@ -284,8 +289,26 @@ const char* binop_type_to_str(enum TokenType binop_type) {
             return "<";
         case TOK_GT:
             return ">";
+        case TOK_PIPE:
+            return "|";
+        case TOK_AMP:
+            return "&";
         default:
-            fprintf(stderr, "error: unknown binop type: %d\n", binop_type);
+            error("unknown binop type: %s\n", tok_type_to_str(binop_type));
+            exit(1);
+    }
+}
+
+const char* unop_type_to_str(enum TokenType unop_type) {
+    switch (unop_type) {
+        case TOK_MINUS:
+            return "-";
+        case TOK_BANG:
+            return "!";
+        case TOK_HASH:
+            return "#";
+        default:
+            error("unknown unop type: %s\n", tok_type_to_str(unop_type));
             exit(1);
     }
 }
@@ -388,15 +411,45 @@ void parse_expr(struct Parser* parser, struct AstNode* node) {
 }
 
 void parse_disj(struct Parser* parser, struct AstNode* node) {
-    return parse_conj(parser, node);
+    parse_conj(parser, node);
+
+    if (parser->tok->type == TOK_PIPE) {
+        struct AstNode* rhs = node_new();
+        *rhs = *node;
+        node->type = AST_BINOP;
+        node->lhs = rhs;
+        node->rhs = node_new();
+        node->binop_type = parser->tok->type;
+        parser->tok++;
+        parse_conj(parser, node->rhs);
+    }
 }
 
 void parse_conj(struct Parser* parser, struct AstNode* node) {
-    return parse_neg(parser, node);
+    parse_neg(parser, node);
+
+    if (parser->tok->type == TOK_AMP) {
+        struct AstNode* rhs = node_new();
+        *rhs = *node;
+        node->type = AST_BINOP;
+        node->lhs = rhs;
+        node->rhs = node_new();
+        node->binop_type = parser->tok->type;
+        parser->tok++;
+        parse_neg(parser, node->rhs);
+    }
 }
 
 void parse_neg(struct Parser* parser, struct AstNode* node) {
-    return parse_comp(parser, node);
+    if (parser->tok->type == TOK_BANG) {
+        node->type = AST_UNOP;
+        node->unop_type = parser->tok->type;
+        parser->tok++;
+        node->node = node_new();
+        parse_neg(parser, node->node);
+    } else {
+        parse_comp(parser, node);
+    }
 }
 
 void parse_comp(struct Parser* parser, struct AstNode* node) {

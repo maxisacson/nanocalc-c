@@ -15,6 +15,8 @@ typedef Value_t (*Cmd_t)(Context_t*, Node_t**, size_t);
 
 const Value_t NIL = {.type = V_NIL};
 const Value_t INF = {.type = V_INF, .int_value = 1};
+const Value_t TRUE = {.type = V_INT, .int_value = 1};
+const Value_t FALSE = {.type = V_INT, .int_value = 0};
 
 Value_t range_next(Range_t*);
 
@@ -138,6 +140,28 @@ void set_value(Context_t* context, const char* name, struct AstValue value) {
     context->map.items[context->map.size++] = item;
 }
 
+bool is_negative(Value_t value) {
+    switch (value.type) {
+        case V_INT:
+            return value.int_value < 0;
+        case V_FLOAT:
+            return value.float_value < 0;
+        default:
+            eval_error("incompatible type: %s\n", value_type_to_str(value.type));
+    };
+}
+
+bool is_truthy(Value_t value) {
+    switch (value.type) {
+        case V_INT:
+            return value.int_value != 0;
+        case V_FLOAT:
+            return value.float_value != 0;
+        default:
+            return false;
+    }
+}
+
 #define apply_binop(op)                                                                                          \
     if (lhs.type == V_INT && rhs.type == V_INT) {                                                                \
         result.type = V_INT;                                                                                     \
@@ -223,6 +247,30 @@ Value_t eval_power(Value_t lhs, Value_t rhs) {
     return result;
 }
 
+Value_t eval_or(Value_t lhs, Value_t rhs) {
+    if (is_truthy(lhs)) {
+        return TRUE;
+    }
+
+    if (is_truthy(rhs)) {
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+Value_t eval_and(Value_t lhs, Value_t rhs) {
+    if (!is_truthy(lhs)) {
+        return FALSE;
+    }
+
+    if (!is_truthy(rhs)) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 Value_t eval_unary_minus(Value_t val) {
     Value_t result;
     if (val.type == V_INT) {
@@ -235,26 +283,12 @@ Value_t eval_unary_minus(Value_t val) {
     return result;
 }
 
-bool is_negative(Value_t value) {
-    switch (value.type) {
-        case V_INT:
-            return value.int_value < 0;
-        case V_FLOAT:
-            return value.float_value < 0;
-        default:
-            eval_error("incompatible type: %s\n", value_type_to_str(value.type));
-    };
-}
-
-bool is_truthy(Value_t value) {
-    switch (value.type) {
-        case V_INT:
-            return value.int_value != 0;
-        case V_FLOAT:
-            return value.float_value != 0;
-        default:
-            return false;
+Value_t eval_unary_not(Value_t val) {
+    if (is_truthy(val)) {
+        return FALSE;
     }
+
+    return TRUE;
 }
 
 bool in_range(Value_t value, Value_t begin, Value_t end) {
@@ -340,6 +374,10 @@ Value_t eval_binop(Context_t* context, Binop_t op, Node_t* lhs, Node_t* rhs) {
             return eval_mod(eval(lhs, context), eval(rhs, context));
         case TOK_POWER:
             return eval_power(eval(lhs, context), eval(rhs, context));
+        case TOK_PIPE:
+            return eval_or(eval(lhs, context), eval(rhs, context));
+        case TOK_AMP:
+            return eval_and(eval(lhs, context), eval(rhs, context));
         default:
             eval_error("unknown binop type: %d\n", op);
     };
@@ -349,6 +387,8 @@ Value_t eval_unop(Context_t* context, Unop_t op, Node_t* node) {
     switch (op) {
         case TOK_MINUS:
             return eval_unary_minus(eval(node, context));
+        case TOK_BANG:
+            return eval_unary_not(eval(node, context));
         default:
             eval_error("unknown unop type: %d\n", op);
     }

@@ -5,9 +5,6 @@
 
 #define KEYWORDS \
     X(if)        \
-    X(and)       \
-    X(or)        \
-    X(not)       \
     X(for)       \
     X(in)        \
     X(Inf)
@@ -55,10 +52,9 @@
     X(TOK_DOTDOT)     \
     X(TOK_EOF)        \
     X(TOK_CMD)        \
+    X(TOK_AMP)        \
+    X(TOK_PIPE)       \
     X(KW_if)          \
-    X(KW_and)         \
-    X(KW_or)          \
-    X(KW_not)         \
     X(KW_for)         \
     X(KW_in)          \
     X(KW_Inf)         \

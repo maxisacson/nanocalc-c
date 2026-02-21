@@ -52,6 +52,8 @@ int main(int argc, const char* argv[]) {
     struct AstNode root;
     parse(&parser, &root);
 
+    draw_ast(&root);
+
     struct Context context = context_new(NULL);
 
     struct AstValue val = {.type = V_INT, .int_value = 42};
@@ -63,8 +65,6 @@ int main(int argc, const char* argv[]) {
         const char* out = ast_value_to_str(&result);
         printf("%s\n", out);
     }
-
-    draw_ast(&root);
 
     return 0;
 }

@@ -181,6 +181,7 @@ void draw_ast(struct AstNode* root);
 const char* ast_value_to_str(struct AstValue* value);
 const char* node_type_to_str(enum NodeType node_type);
 const char* binop_type_to_str(enum TokenType binop_type);
+const char* unop_type_to_str(enum TokenType unop_type);
 const char* value_type_to_str(enum ValueType value_type);
 
 void parse(struct Parser* parser, struct AstNode* node);

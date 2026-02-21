@@ -246,6 +246,14 @@ int tokenize(const char* string, struct Token* tokens[]) {
                     ++s;
                 }
                 break;
+            case '&':
+                ta_append(&arr, TOK_AMP, 0);
+                ++s;
+                break;
+            case '|':
+                ta_append(&arr, TOK_PIPE, 0);
+                ++s;
+                break;
             case '-':
                 if (*peek == '.' || ('0' <= *peek && *peek <= '9')) {
                     tok_number(&arr, &s);
