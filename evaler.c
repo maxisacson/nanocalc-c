@@ -158,12 +158,27 @@ bool is_truthy(Value_t value) {
             return value.int_value != 0;
         case V_FLOAT:
             return value.float_value != 0;
+        case V_STRING:
+            return strlen(value.string_value) > 0;
+        case V_LIST:
+            return value.list_size > 0;
         default:
             return false;
     }
 }
 
-#define apply_binop(op)                                                                                          \
+Value_t value_repeat(Value_t value, size_t count) {
+    Value_t list = {.type = V_LIST, .list_size = count};
+    list.list_value = malloc(count * sizeof(Value_t));
+
+    for (size_t i = 0; i < count; ++i) {
+        list.list_value[i] = value;
+    }
+
+    return list;
+}
+
+#define binop_impl(op)                                                                                          \
     if (lhs.type == V_INT && rhs.type == V_INT) {                                                                \
         result.type = V_INT;                                                                                     \
         result.int_value = lhs.int_value op rhs.int_value;                                                       \
@@ -180,7 +195,7 @@ bool is_truthy(Value_t value) {
         eval_error("incompatible types: %s and %s\n", value_type_to_str(lhs.type), value_type_to_str(rhs.type)); \
     }
 
-#define apply_comp(op)                                                                                           \
+#define comp_impl(op)                                                                                           \
     if (lhs.type == V_INT && rhs.type == V_INT) {                                                                \
         result = lhs.int_value op rhs.int_value ? TRUE : FALSE;                                                  \
     } else if (lhs.type == V_INT && rhs.type == V_FLOAT) {                                                       \
@@ -193,31 +208,74 @@ bool is_truthy(Value_t value) {
         eval_error("incompatible types: %s and %s\n", value_type_to_str(lhs.type), value_type_to_str(rhs.type)); \
     }
 
-Value_t eval_plus(Value_t lhs, Value_t rhs) {
-    Value_t result;
-    apply_binop(+);
+Value_t broadcast_func1(Value_t(*func)(Value_t), Value_t value) {
+    Value_t result = NIL;
+
+    if (value.type == V_LIST) {
+        result.type = V_LIST;
+        result.list_size = value.list_size;
+        result.list_value = malloc(result.list_size * sizeof(Value_t));
+        for (size_t i = 0; i < result.list_size; ++i) {
+            result.list_value[i] = func(value.list_value[i]);
+        }
+    } else {
+        result = func(value);
+    }
+
     return result;
 }
 
-Value_t eval_minus(Value_t lhs, Value_t rhs) {
-    Value_t result;
-    apply_binop(-);
+Value_t broadcast_func2(Value_t(*func)(Value_t, Value_t), Value_t lhs, Value_t rhs) {
+    Value_t result = NIL;
+
+    if (lhs.type == V_LIST && rhs.type == V_LIST) {
+        if (lhs.list_size != rhs.list_size) {
+            eval_error("expected lists to be of same length: %zu and %zu\n", lhs.list_size, rhs.list_size);
+        }
+        result.type = V_LIST;
+        result.list_size = lhs.list_size;
+        result.list_value = malloc(result.list_size * sizeof(Value_t));
+        for (size_t i = 0; i < result.list_size; ++i) {
+            result.list_value[i] = func(lhs.list_value[i], rhs.list_value[i]);
+        }
+    } else if (lhs.type == V_LIST) {
+        rhs = value_repeat(rhs, lhs.list_size);
+        result = broadcast_func2(func, lhs, rhs);
+    } else if (rhs.type == V_LIST) {
+        lhs = value_repeat(lhs, rhs.list_size);
+        result = broadcast_func2(func, lhs, rhs);
+    } else {
+        result = func(lhs, rhs);
+    }
+
     return result;
 }
 
-Value_t eval_times(Value_t lhs, Value_t rhs) {
+Value_t op_plus(Value_t lhs, Value_t rhs) {
     Value_t result;
-    apply_binop(*);
+    binop_impl(+);
     return result;
 }
 
-Value_t eval_divide(Value_t lhs, Value_t rhs) {
+Value_t op_minus(Value_t lhs, Value_t rhs) {
     Value_t result;
-    apply_binop(/);
+    binop_impl(-);
     return result;
 }
 
-Value_t eval_mod(Value_t lhs, Value_t rhs) {
+Value_t op_times(Value_t lhs, Value_t rhs) {
+    Value_t result;
+    binop_impl(*);
+    return result;
+}
+
+Value_t op_divide(Value_t lhs, Value_t rhs) {
+    Value_t result;
+    binop_impl(/);
+    return result;
+}
+
+Value_t op_mod(Value_t lhs, Value_t rhs) {
     Value_t result;
     if (lhs.type == V_INT && rhs.type == V_INT) {
         result.type = V_INT;
@@ -238,7 +296,7 @@ Value_t eval_mod(Value_t lhs, Value_t rhs) {
     return result;
 }
 
-Value_t eval_power(Value_t lhs, Value_t rhs) {
+Value_t op_power(Value_t lhs, Value_t rhs) {
     Value_t result;
 
     if (lhs.type == V_INT && rhs.type == V_INT) {
@@ -261,71 +319,59 @@ Value_t eval_power(Value_t lhs, Value_t rhs) {
     return result;
 }
 
-Value_t eval_or(Context_t* context, Node_t* lhs, Node_t* rhs) {
-    Value_t lval = eval(lhs, context);
-    if (is_truthy(lval)) {
-        return TRUE;
-    }
-
-    Value_t rval = eval(rhs, context);
-    if (is_truthy(rval)) {
+Value_t op_or(Value_t lhs, Value_t rhs) {
+    if (is_truthy(lhs) || is_truthy(rhs)) {
         return TRUE;
     }
 
     return FALSE;
 }
 
-Value_t eval_and(Context_t* context, Node_t* lhs, Node_t* rhs) {
-    Value_t lval = eval(lhs, context);
-    if (!is_truthy(lval)) {
-        return FALSE;
+Value_t op_and(Value_t lhs, Value_t rhs) {
+    if (is_truthy(lhs) && is_truthy(rhs)) {
+        return TRUE;
     }
 
-    Value_t rval = eval(rhs, context);
-    if (!is_truthy(rval)) {
-        return FALSE;
-    }
-
-    return TRUE;
+    return FALSE;
 }
 
-Value_t eval_lt(Value_t lhs, Value_t rhs) {
+Value_t op_lt(Value_t lhs, Value_t rhs) {
     Value_t result;
-    apply_comp(<);
+    comp_impl(<);
     return result;
 }
 
-Value_t eval_gt(Value_t lhs, Value_t rhs) {
+Value_t op_gt(Value_t lhs, Value_t rhs) {
     Value_t result;
-    apply_comp(>);
+    comp_impl(>);
     return result;
 }
 
-Value_t eval_leq(Value_t lhs, Value_t rhs) {
+Value_t op_leq(Value_t lhs, Value_t rhs) {
     Value_t result;
-    apply_comp(<=);
+    comp_impl(<=);
     return result;
 }
 
-Value_t eval_geq(Value_t lhs, Value_t rhs) {
+Value_t op_geq(Value_t lhs, Value_t rhs) {
     Value_t result;
-    apply_comp(>=);
+    comp_impl(>=);
     return result;
 }
 
-Value_t eval_eeq(Value_t lhs, Value_t rhs) {
+Value_t op_eeq(Value_t lhs, Value_t rhs) {
     Value_t result;
-    apply_comp(==);
+    comp_impl(==);
     return result;
 }
 
-Value_t eval_neq(Value_t lhs, Value_t rhs) {
+Value_t op_neq(Value_t lhs, Value_t rhs) {
     Value_t result;
-    apply_comp(!=);
+    comp_impl(!=);
     return result;
 }
 
-Value_t eval_unary_minus(Value_t val) {
+Value_t op_unary_minus(Value_t val) {
     Value_t result;
     if (val.type == V_INT) {
         result.type = V_INT;
@@ -337,7 +383,7 @@ Value_t eval_unary_minus(Value_t val) {
     return result;
 }
 
-Value_t eval_unary_not(Value_t val) {
+Value_t op_unary_not(Value_t val) {
     if (is_truthy(val)) {
         return FALSE;
     }
@@ -350,14 +396,14 @@ bool in_range(Value_t value, Value_t begin, Value_t end) {
         return true;
     }
 
-    Value_t diff = eval_minus(end, begin);
+    Value_t diff = op_minus(end, begin);
     if (is_negative(diff)) {
         Value_t tmp = begin;
         begin = end;
         end = tmp;
     }
-    Value_t diff1 = eval_minus(value, begin);
-    Value_t diff2 = eval_minus(end, value);
+    Value_t diff1 = op_minus(value, begin);
+    Value_t diff2 = op_minus(end, value);
 
     if (is_negative(diff1) || is_negative(diff2)) {
         return false;
@@ -391,7 +437,7 @@ Value_t range_next(Range_t* range) {
         } else if (range->count + 1 == range->length) {
             range->value = range->stop;
         } else if (range->started) {
-            range->value = eval_plus(range->value, range->step);
+            range->value = op_plus(range->value, range->step);
         } else {
             range->value = range->start;
             range->started = true;
@@ -399,7 +445,7 @@ Value_t range_next(Range_t* range) {
         range->count++;
     } else {
         if (range->started) {
-            range->value = eval_plus(range->value, range->step);
+            range->value = op_plus(range->value, range->step);
         } else {
             range->value = range->start;
             range->started = true;
@@ -446,32 +492,80 @@ Value_t range_to_list(Range_t* range) {
     return list;
 }
 
+Value_t eval_or(Context_t* context, Node_t* lhs, Node_t* rhs) {
+    Value_t lval = eval(lhs, context);
+
+    if (lval.type == V_LIST && lval.list_size > 0) {
+        return broadcast_func2(op_or, lval, eval(rhs, context));
+    }
+
+    if (is_truthy(lval)) {
+        return TRUE;
+    }
+
+    Value_t rval = eval(rhs, context);
+
+    if (rval.type == V_LIST && rval.list_size > 0) {
+        return broadcast_func2(op_or, lval, rval);
+    }
+
+    if (is_truthy(rval)) {
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+Value_t eval_and(Context_t* context, Node_t* lhs, Node_t* rhs) {
+    Value_t lval = eval(lhs, context);
+
+    if (lval.type == V_LIST && lval.list_size > 0) {
+        return broadcast_func2(op_and, lval, eval(rhs, context));
+    }
+
+    if (!is_truthy(lval)) {
+        return FALSE;
+    }
+
+    Value_t rval = eval(rhs, context);
+
+    if (rval.type == V_LIST && rval.list_size > 0) {
+        return broadcast_func2(op_and, lval, rval);
+    }
+
+    if (!is_truthy(rval)) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 Value_t eval_binop(Context_t* context, Binop_t op, Node_t* lhs, Node_t* rhs) {
     switch (op) {
         case TOK_PLUS:
-            return eval_plus(eval(lhs, context), eval(rhs, context));
+            return broadcast_func2(op_plus, eval(lhs, context), eval(rhs, context));
         case TOK_MINUS:
-            return eval_minus(eval(lhs, context), eval(rhs, context));
+            return broadcast_func2(op_minus, eval(lhs, context), eval(rhs, context));
         case TOK_STAR:
-            return eval_times(eval(lhs, context), eval(rhs, context));
+            return broadcast_func2(op_times, eval(lhs, context), eval(rhs, context));
         case TOK_FSLASH:
-            return eval_divide(eval(lhs, context), eval(rhs, context));
+            return broadcast_func2(op_divide, eval(lhs, context), eval(rhs, context));
         case TOK_PERC:
-            return eval_mod(eval(lhs, context), eval(rhs, context));
+            return broadcast_func2(op_mod, eval(lhs, context), eval(rhs, context));
         case TOK_POWER:
-            return eval_power(eval(lhs, context), eval(rhs, context));
+            return broadcast_func2(op_power, eval(lhs, context), eval(rhs, context));
         case TOK_LT:
-            return eval_lt(eval(lhs, context), eval(rhs, context));
+            return broadcast_func2(op_lt, eval(lhs, context), eval(rhs, context));
         case TOK_GT:
-            return eval_gt(eval(lhs, context), eval(rhs, context));
+            return broadcast_func2(op_gt, eval(lhs, context), eval(rhs, context));
         case TOK_LEQ:
-            return eval_leq(eval(lhs, context), eval(rhs, context));
+            return broadcast_func2(op_leq, eval(lhs, context), eval(rhs, context));
         case TOK_GEQ:
-            return eval_geq(eval(lhs, context), eval(rhs, context));
+            return broadcast_func2(op_geq, eval(lhs, context), eval(rhs, context));
         case TOK_EEQ:
-            return eval_eeq(eval(lhs, context), eval(rhs, context));
+            return broadcast_func2(op_eeq, eval(lhs, context), eval(rhs, context));
         case TOK_NEQ:
-            return eval_neq(eval(lhs, context), eval(rhs, context));
+            return broadcast_func2(op_neq, eval(lhs, context), eval(rhs, context));
         case TOK_PIPE:
             return eval_or(context, lhs, rhs);
         case TOK_AMP:
@@ -481,7 +575,7 @@ Value_t eval_binop(Context_t* context, Binop_t op, Node_t* lhs, Node_t* rhs) {
     };
 }
 
-Value_t eval_length(Value_t value) {
+Value_t op_length(Value_t value) {
     Value_t result = {.type = V_INT};
     switch (value.type) {
         case V_LIST: {
@@ -504,11 +598,11 @@ Value_t eval_length(Value_t value) {
 Value_t eval_unop(Context_t* context, Unop_t op, Node_t* node) {
     switch (op) {
         case TOK_MINUS:
-            return eval_unary_minus(eval(node, context));
+            return broadcast_func1(op_unary_minus, eval(node, context));
         case TOK_BANG:
-            return eval_unary_not(eval(node, context));
+            return broadcast_func1(op_unary_not, eval(node, context));
         case TOK_HASH:
-            return eval_length(eval(node, context));
+            return op_length(eval(node, context));
         default:
             eval_error("unknown unop type: %s\n", tok_type_to_str(op));
     }

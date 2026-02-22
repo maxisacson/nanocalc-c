@@ -688,7 +688,12 @@ void parse_atom(struct Parser* parser, struct AstNode* node) {
         } break;
         case TOK_LBRACKET: {
             parser->tok++;
-            parse_items(parser, node);
+            if (parser->tok->type != TOK_RBRACKET) {
+                parse_items(parser, node);
+            } else {
+                node->type = AST_ITEMS;
+                node->item_count = 0;
+            }
             expect(TOK_RBRACKET);
             parser->tok++;
         } break;

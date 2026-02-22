@@ -5,13 +5,13 @@
 #include "token.h"
 
 #define NODE_TYPES    \
-    X(AST_PROG)       \
+    X(AST_UNDEFINED)  \
+    X(AST_PROGRAM)    \
     X(AST_LITERAL)    \
     X(AST_BINOP)      \
     X(AST_UNOP)       \
     X(AST_IDENTIFIER) \
     X(AST_ASSIGNMENT) \
-    X(AST_PROGRAM)    \
     X(AST_ITEMS)      \
     X(AST_FCALL)      \
     X(AST_FDEF)       \
