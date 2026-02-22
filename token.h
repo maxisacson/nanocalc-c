@@ -75,3 +75,5 @@ struct Token {
 };
 
 #endif
+
+// vim: ft=c

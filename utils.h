@@ -28,6 +28,11 @@
     fprintf(stderr, "unreachable_code: %s: %s:%d\n", __PRETTY_FUNCTION__, __FILE__, __LINE__); \
     abort()
 
+#define check_nargs(expect)                                                  \
+    if (nargs != (expect)) {                                                 \
+        eval_error("expected %d argument bot got: %zu\n", (expect), nargs); \
+    }
+
 typedef struct {
     const char** data;
     size_t size;
@@ -56,3 +61,5 @@ void ptrarr_append(PtrArr* array, void* data);
 #define UNDEF_SIZE (size_t)(-1)
 
 #endif
+
+// vim: ft=c

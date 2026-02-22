@@ -8,3 +8,5 @@ const char* tok_type_to_str(enum TokenType tok_type);
 int tokenize(const char* string, struct Token* tokens[]);
 
 #endif
+
+// vim: ft=c

@@ -12,7 +12,9 @@ typedef struct AstValue Value_t;
 typedef struct AstNode Node_t;
 typedef struct Context Context_t;
 typedef struct RangeValue Range_t;
+typedef struct EvalFunc EvalFunc_t;
 typedef Value_t (*Cmd_t)(Context_t*, Node_t**, size_t);
+typedef Value_t (*Func_t)(Value_t*, size_t);
 
 const Value_t NIL = {.type = V_NIL};
 const Value_t INF = {.type = V_INF, .int_value = 1};
@@ -104,10 +106,191 @@ struct Map new_map() {
 }
 
 Context_t context_new(Context_t* parent) {
-    Context_t context;
-    context.parent = parent;
-    context.map = new_map();
+    Context_t context = {
+        .parent = parent,
+        .map = new_map(),
+        .read_only = false,
+    };
     return context;
+}
+
+EvalFunc_t* evalfunc_new(Context_t* context, const char** params, size_t param_count, Node_t* body, Func_t func) {
+    if (body != NULL && func != NULL) {
+        error("cannot specify both body and func\n");
+    }
+
+    if (body == NULL && func == NULL) {
+        error("must specify either body or func\n");
+    }
+
+    EvalFunc_t* ef = malloc(sizeof(EvalFunc_t));
+    ef->context = context;
+    ef->params = params;
+    ef->param_count = param_count;
+    ef->body = body;
+    ef->func = func;
+
+    return ef;
+}
+
+Value_t value_repeat(Value_t value, size_t count) {
+    Value_t list = {.type = V_LIST, .list_size = count};
+    list.list_value = malloc(count * sizeof(Value_t));
+
+    for (size_t i = 0; i < count; ++i) {
+        list.list_value[i] = value;
+    }
+
+    return list;
+}
+
+Value_t broadcast_func1(Value_t(*func)(Value_t), Value_t value) {
+    Value_t result = NIL;
+
+    if (value.type == V_LIST) {
+        result.type = V_LIST;
+        result.list_size = value.list_size;
+        result.list_value = malloc(result.list_size * sizeof(Value_t));
+        for (size_t i = 0; i < result.list_size; ++i) {
+            result.list_value[i] = func(value.list_value[i]);
+        }
+    } else {
+        result = func(value);
+    }
+
+    return result;
+}
+
+Value_t broadcast_func2(Value_t(*func)(Value_t, Value_t), Value_t lhs, Value_t rhs) {
+    Value_t result = NIL;
+
+    if (lhs.type == V_LIST && rhs.type == V_LIST) {
+        if (lhs.list_size != rhs.list_size) {
+            eval_error("expected lists to be of same length: %zu and %zu\n", lhs.list_size, rhs.list_size);
+        }
+        result.type = V_LIST;
+        result.list_size = lhs.list_size;
+        result.list_value = malloc(result.list_size * sizeof(Value_t));
+        for (size_t i = 0; i < result.list_size; ++i) {
+            result.list_value[i] = func(lhs.list_value[i], rhs.list_value[i]);
+        }
+    } else if (lhs.type == V_LIST) {
+        rhs = value_repeat(rhs, lhs.list_size);
+        result = broadcast_func2(func, lhs, rhs);
+    } else if (rhs.type == V_LIST) {
+        lhs = value_repeat(lhs, rhs.list_size);
+        result = broadcast_func2(func, lhs, rhs);
+    } else {
+        result = func(lhs, rhs);
+    }
+
+    return result;
+}
+
+Value_t wrap_float_float1(double(*f)(double), Value_t value) {
+    double x = as_float(value);
+    double result = f(x);
+    return make_float(result);
+}
+
+Value_t c_sin_impl(Value_t value) {
+    return wrap_float_float1(sin, value);
+}
+
+Value_t c_cos_impl(Value_t value) {
+    return wrap_float_float1(cos, value);
+}
+
+Value_t c_tan_impl(Value_t value) {
+    return wrap_float_float1(tan, value);
+}
+
+Value_t c_asin_impl(Value_t value) {
+    return wrap_float_float1(asin, value);
+}
+
+Value_t c_acos_impl(Value_t value) {
+    return wrap_float_float1(acos, value);
+}
+
+Value_t c_atan_impl(Value_t value) {
+    return wrap_float_float1(atan, value);
+}
+
+Value_t c_exp_impl(Value_t value) {
+    return wrap_float_float1(exp, value);
+}
+
+Value_t c_log_impl(Value_t value) {
+    return wrap_float_float1(log, value);
+}
+
+Value_t c_sqrt_impl(Value_t value) {
+    return wrap_float_float1(sqrt, value);
+}
+
+Value_t c_sin(Value_t* args, size_t nargs) {
+    check_nargs(1);
+    return broadcast_func1(c_sin_impl, args[0]);
+}
+
+Value_t c_cos(Value_t* args, size_t nargs) {
+    check_nargs(1);
+    return broadcast_func1(c_cos_impl, args[0]);
+}
+
+Value_t c_tan(Value_t* args, size_t nargs) {
+    check_nargs(1);
+    return broadcast_func1(c_tan_impl, args[0]);
+}
+
+Value_t c_asin(Value_t* args, size_t nargs) {
+    check_nargs(1);
+    return broadcast_func1(c_asin_impl, args[0]);
+}
+
+Value_t c_acos(Value_t* args, size_t nargs) {
+    check_nargs(1);
+    return broadcast_func1(c_acos_impl, args[0]);
+}
+
+Value_t c_atan(Value_t* args, size_t nargs) {
+    check_nargs(1);
+    return broadcast_func1(c_atan_impl, args[0]);
+}
+
+Value_t c_exp(Value_t* args, size_t nargs) {
+    check_nargs(1);
+    return broadcast_func1(c_exp_impl, args[0]);
+}
+
+Value_t c_log(Value_t* args, size_t nargs) {
+    check_nargs(1);
+    return broadcast_func1(c_exp_impl, args[0]);
+}
+
+Value_t c_sqrt(Value_t* args, size_t nargs) {
+    check_nargs(1);
+    return broadcast_func1(c_sqrt_impl, args[0]);
+}
+
+Value_t make_callable(EvalFunc_t* f) {
+    Value_t callable = {.type = V_CALLABLE, .data = f};
+    return callable;
+}
+
+void setup_builtin_context(Context_t* context) {
+    context->read_only = true;
+
+    set_value(context, "sin", make_callable(evalfunc_new(context, NULL, 1, NULL, c_sin)));
+    set_value(context, "cos", make_callable(evalfunc_new(context, NULL, 1, NULL, c_cos)));
+    set_value(context, "tan", make_callable(evalfunc_new(context, NULL, 1, NULL, c_tan)));
+    set_value(context, "asin", make_callable(evalfunc_new(context, NULL, 1, NULL, c_asin)));
+    set_value(context, "acos", make_callable(evalfunc_new(context, NULL, 1, NULL, c_acos)));
+    set_value(context, "atan", make_callable(evalfunc_new(context, NULL, 1, NULL, c_atan)));
+    set_value(context, "exp", make_callable(evalfunc_new(context, NULL, 1, NULL, c_exp)));
+    set_value(context, "log", make_callable(evalfunc_new(context, NULL, 1, NULL, c_log)));
+    set_value(context, "sqrt", make_callable(evalfunc_new(context, NULL, 1, NULL, c_sqrt)));
 }
 
 Value_t get_value(Context_t* context, const char* name) {
@@ -167,17 +350,6 @@ bool is_truthy(Value_t value) {
     }
 }
 
-Value_t value_repeat(Value_t value, size_t count) {
-    Value_t list = {.type = V_LIST, .list_size = count};
-    list.list_value = malloc(count * sizeof(Value_t));
-
-    for (size_t i = 0; i < count; ++i) {
-        list.list_value[i] = value;
-    }
-
-    return list;
-}
-
 #define binop_impl(op)                                                                                          \
     if (lhs.type == V_INT && rhs.type == V_INT) {                                                                \
         result.type = V_INT;                                                                                     \
@@ -207,49 +379,6 @@ Value_t value_repeat(Value_t value, size_t count) {
     } else {                                                                                                     \
         eval_error("incompatible types: %s and %s\n", value_type_to_str(lhs.type), value_type_to_str(rhs.type)); \
     }
-
-Value_t broadcast_func1(Value_t(*func)(Value_t), Value_t value) {
-    Value_t result = NIL;
-
-    if (value.type == V_LIST) {
-        result.type = V_LIST;
-        result.list_size = value.list_size;
-        result.list_value = malloc(result.list_size * sizeof(Value_t));
-        for (size_t i = 0; i < result.list_size; ++i) {
-            result.list_value[i] = func(value.list_value[i]);
-        }
-    } else {
-        result = func(value);
-    }
-
-    return result;
-}
-
-Value_t broadcast_func2(Value_t(*func)(Value_t, Value_t), Value_t lhs, Value_t rhs) {
-    Value_t result = NIL;
-
-    if (lhs.type == V_LIST && rhs.type == V_LIST) {
-        if (lhs.list_size != rhs.list_size) {
-            eval_error("expected lists to be of same length: %zu and %zu\n", lhs.list_size, rhs.list_size);
-        }
-        result.type = V_LIST;
-        result.list_size = lhs.list_size;
-        result.list_value = malloc(result.list_size * sizeof(Value_t));
-        for (size_t i = 0; i < result.list_size; ++i) {
-            result.list_value[i] = func(lhs.list_value[i], rhs.list_value[i]);
-        }
-    } else if (lhs.type == V_LIST) {
-        rhs = value_repeat(rhs, lhs.list_size);
-        result = broadcast_func2(func, lhs, rhs);
-    } else if (rhs.type == V_LIST) {
-        lhs = value_repeat(lhs, rhs.list_size);
-        result = broadcast_func2(func, lhs, rhs);
-    } else {
-        result = func(lhs, rhs);
-    }
-
-    return result;
-}
 
 Value_t op_plus(Value_t lhs, Value_t rhs) {
     Value_t result;
@@ -661,12 +790,21 @@ Value_t eval_fcall(Context_t* context, const char* fname, Node_t** params, size_
 
     struct Context local = context_new(f->context);
 
+    Value_t* args = malloc(param_count * sizeof(Value_t));
     for (size_t i = 0; i < param_count; ++i) {
         Value_t param = eval(params[i], context);
-        set_value(&local, f->params[i], param);
+        args[i] = param;
     }
 
-    Value_t result = eval(f->body, &local);
+    Value_t result = NIL;
+    if (f->body != NULL) {
+        for (size_t i = 0; i < param_count; ++i) {
+            set_value(&local, f->params[i], args[i]);
+        }
+        result = eval(f->body, &local);
+    } else if (f->func != NULL) {
+        result = f->func(args, param_count);
+    }
 
     return result;
 }
@@ -681,14 +819,8 @@ Value_t eval_fdef(Context_t* context, const char* fname, Node_t** params, size_t
         names[i] = params[i]->name;
     }
 
-    struct EvalFunc* ef = malloc(sizeof(struct EvalFunc));
-    ef->context = context;
-    ef->params = names;
-    ef->param_count = param_count;
-    ef->body = body;
-
-    struct AstValue callable = {.data = ef};
-
+    EvalFunc_t* ef = evalfunc_new(context, names, param_count, body, NULL);
+    Value_t callable = {.type = V_CALLABLE, .data = ef};
     set_value(context, fname, callable);
 
     return NIL;

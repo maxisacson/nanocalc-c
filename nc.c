@@ -54,7 +54,9 @@ int main(int argc, const char* argv[]) {
 
     draw_ast(&root);
 
-    struct Context context = context_new(NULL);
+    struct Context builtin = context_new(NULL);
+    setup_builtin_context(&builtin);
+    struct Context context = context_new(&builtin);
 
     struct AstValue val = {.type = V_INT, .int_value = 42};
     set_value(&context, "x", val);

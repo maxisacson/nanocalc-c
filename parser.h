@@ -201,3 +201,5 @@ void parse_atom(struct Parser* parser, struct AstNode* node);
 void parse_items(struct Parser* parser, struct AstNode* node);
 
 #endif
+
+// vim: ft=c
