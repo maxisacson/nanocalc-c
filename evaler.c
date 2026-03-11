@@ -1,20 +1,20 @@
 #include "evaler.h"
+#include <dlfcn.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include "lexer.h"
 #include "utils.h"
+#include "nc.h"
 
 typedef enum TokenType Binop_t;
 typedef enum TokenType Unop_t;
-typedef struct AstValue Value_t;
 typedef struct AstNode Node_t;
 typedef struct Context Context_t;
 typedef struct RangeValue Range_t;
 typedef struct EvalFunc EvalFunc_t;
 typedef Value_t (*Cmd_t)(Context_t*, Node_t**, size_t);
-typedef Value_t (*Func_t)(Value_t*, size_t);
 
 const Value_t NIL = {.type = V_NIL};
 const Value_t INF = {.type = V_INF, .int_value = 1};
@@ -52,13 +52,96 @@ Value_t cmd_print(Context_t* context, Node_t** args, size_t arg_count) {
     return NIL;
 };
 
-typedef struct {
+Value_t make_callable(EvalFunc_t* f) {
+    Value_t callable = {.type = V_CALLABLE, .data = f};
+    return callable;
+}
+
+EvalFunc_t* evalfunc_new(Context_t* context, const char** params, size_t param_count, Node_t* body, Func_t func) {
+    if (body != NULL && func != NULL) {
+        error("cannot specify both body and func\n");
+    }
+
+    if (body == NULL && func == NULL) {
+        error("must specify either body or func\n");
+    }
+
+    EvalFunc_t* ef = malloc(sizeof(EvalFunc_t));
+    ef->context = context;
+    ef->params = params;
+    ef->param_count = param_count;
+    ef->body = body;
+    ef->func = func;
+
+    return ef;
+}
+
+Value_t cmd_load(Context_t* context, Node_t** args, size_t nargs) {
+    check_nargs(1);
+
+    if (args[0]->type != AST_IDENTIFIER) {
+        eval_error("expected arg to be of type %s but got: %s\n", node_type_to_str(AST_IDENTIFIER),
+                   node_type_to_str(args[0]->type));
+    }
+
+    const char* name = args[0]->name;
+    char filename[256];
+    sprintf(filename, "./plug/%s.so", name);
+
+    void* handle = dlopen(filename, RTLD_LAZY);
+
+    if (handle == NULL) {
+        eval_error("could not load plugin '%s': %s\n", name, dlerror());
+    }
+
+    dlerror();
+    PlugInitFunc_t init = dlsym(handle, "init");
+    const char* err = dlerror();
+    if (err != NULL) {
+        int rc = dlclose(handle);
+        if (rc != 0) {
+            fprintf(stderr, "%s\n", dlerror());
+        }
+        eval_error("error loading init for plugin '%s': %s\n", name, err);
+    }
+
+    PlugSpec_t spec = {};
+    int initrc = init(&spec);
+    if (initrc != 0) {
+        int rc = dlclose(handle);
+        if (rc != 0) {
+            fprintf(stderr, "%s\n", dlerror());
+        }
+        eval_error("error initializing plugin '%s': %d\n", name, initrc);
+    }
+
+    for (size_t i = 0; i < spec.nfuncs; ++i) {
+        dlerror();
+        const char* fname = spec.func_names[i];
+        Func_t plug_func = dlsym(handle, fname);
+        const char* err = dlerror();
+        if (err != NULL) {
+            int rc = dlclose(handle);
+            if (rc != 0) {
+                fprintf(stderr, "%s\n", dlerror());
+            }
+            eval_error("error loading symbol '%s' from plugin '%s': %s\n", fname, name, err);
+        }
+        set_value(context, fname, make_callable(evalfunc_new(context, NULL, spec.func_nargs[i], NULL, plug_func)));
+    }
+
+    return NIL;
+};
+
+struct CmdItem {
     const char* name;
     Cmd_t cmd;
-} CmdItem_t;
+};
+typedef struct CmdItem CmdItem_t;
 
 const CmdItem_t commands[] = {
     {"print", cmd_print},
+    {"load", cmd_load},
 };
 
 Cmd_t get_cmd(const char* name) {
@@ -114,25 +197,6 @@ Context_t context_new(Context_t* parent) {
     return context;
 }
 
-EvalFunc_t* evalfunc_new(Context_t* context, const char** params, size_t param_count, Node_t* body, Func_t func) {
-    if (body != NULL && func != NULL) {
-        error("cannot specify both body and func\n");
-    }
-
-    if (body == NULL && func == NULL) {
-        error("must specify either body or func\n");
-    }
-
-    EvalFunc_t* ef = malloc(sizeof(EvalFunc_t));
-    ef->context = context;
-    ef->params = params;
-    ef->param_count = param_count;
-    ef->body = body;
-    ef->func = func;
-
-    return ef;
-}
-
 Value_t value_repeat(Value_t value, size_t count) {
     Value_t list = {.type = V_LIST, .list_size = count};
     list.list_value = malloc(count * sizeof(Value_t));
@@ -144,7 +208,7 @@ Value_t value_repeat(Value_t value, size_t count) {
     return list;
 }
 
-Value_t broadcast_func1(Value_t(*func)(Value_t), Value_t value) {
+Value_t broadcast_func1(Value_t (*func)(Value_t), Value_t value) {
     Value_t result = NIL;
 
     if (value.type == V_LIST) {
@@ -161,7 +225,7 @@ Value_t broadcast_func1(Value_t(*func)(Value_t), Value_t value) {
     return result;
 }
 
-Value_t broadcast_func2(Value_t(*func)(Value_t, Value_t), Value_t lhs, Value_t rhs) {
+Value_t broadcast_func2(Value_t (*func)(Value_t, Value_t), Value_t lhs, Value_t rhs) {
     Value_t result = NIL;
 
     if (lhs.type == V_LIST && rhs.type == V_LIST) {
@@ -187,7 +251,7 @@ Value_t broadcast_func2(Value_t(*func)(Value_t, Value_t), Value_t lhs, Value_t r
     return result;
 }
 
-Value_t wrap_float_float1(double(*f)(double), Value_t value) {
+Value_t wrap_float_float1(double (*f)(double), Value_t value) {
     double x = as_float(value);
     double result = f(x);
     return make_float(result);
@@ -274,11 +338,6 @@ Value_t c_sqrt(Value_t* args, size_t nargs) {
     return broadcast_func1(c_sqrt_impl, args[0]);
 }
 
-Value_t make_callable(EvalFunc_t* f) {
-    Value_t callable = {.type = V_CALLABLE, .data = f};
-    return callable;
-}
-
 void setup_builtin_context(Context_t* context) {
     context->read_only = true;
 
@@ -350,7 +409,7 @@ bool is_truthy(Value_t value) {
     }
 }
 
-#define binop_impl(op)                                                                                          \
+#define binop_impl(op)                                                                                           \
     if (lhs.type == V_INT && rhs.type == V_INT) {                                                                \
         result.type = V_INT;                                                                                     \
         result.int_value = lhs.int_value op rhs.int_value;                                                       \
@@ -367,7 +426,7 @@ bool is_truthy(Value_t value) {
         eval_error("incompatible types: %s and %s\n", value_type_to_str(lhs.type), value_type_to_str(rhs.type)); \
     }
 
-#define comp_impl(op)                                                                                           \
+#define comp_impl(op)                                                                                            \
     if (lhs.type == V_INT && rhs.type == V_INT) {                                                                \
         result = lhs.int_value op rhs.int_value ? TRUE : FALSE;                                                  \
     } else if (lhs.type == V_INT && rhs.type == V_FLOAT) {                                                       \
@@ -786,6 +845,9 @@ Value_t eval_items(Context_t* context, Node_t** items, size_t item_count) {
 
 Value_t eval_fcall(Context_t* context, const char* fname, Node_t** params, size_t param_count) {
     Value_t callable = get_value(context, fname);
+    if (callable.type == V_NIL) {
+        eval_error("could not find function: %s\n", fname);
+    }
     struct EvalFunc* f = callable.data;
 
     struct Context local = context_new(f->context);

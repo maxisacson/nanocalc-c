@@ -379,7 +379,7 @@ void parse_stmnt(struct Parser* parser, struct AstNode* node) {
 
         PtrArr arr = {};
         struct AstNode* tmp;
-        while (parser->tok->type != TOK_EOL && parser->tok->type != TOK_EOF) {
+        while (parser->tok->type != TOK_EOL && parser->tok->type != TOK_EOF && parser->tok->type != TOK_SEMICOLON) {
             tmp = node_new();
             parse_expr(parser, tmp);
             ptrarr_append(&arr, tmp);

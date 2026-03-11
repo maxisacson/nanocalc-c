@@ -15,6 +15,7 @@
     X(table)     \
     X(sum)       \
     X(prod)      \
+    X(load)      \
     X(dump)
 
 #define TOKEN_TYPES   \
@@ -63,6 +64,7 @@
     X(CMD_table)      \
     X(CMD_sum)        \
     X(CMD_prod)       \
+    X(CMD_load)       \
     X(CMD_dump)
 
 #define X(x) x,

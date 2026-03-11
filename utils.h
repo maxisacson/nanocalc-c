@@ -28,8 +28,8 @@
     fprintf(stderr, "unreachable_code: %s: %s:%d\n", __PRETTY_FUNCTION__, __FILE__, __LINE__); \
     abort()
 
-#define check_nargs(expect)                                                  \
-    if (nargs != (expect)) {                                                 \
+#define check_nargs(expect)                                                 \
+    if (nargs != (expect)) {                                                \
         eval_error("expected %d argument bot got: %zu\n", (expect), nargs); \
     }
 

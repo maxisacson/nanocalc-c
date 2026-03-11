@@ -1,3 +1,5 @@
 nc
 *.dot
 *.svg
+.clangd
+*.so
