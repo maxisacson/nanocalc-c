@@ -42,7 +42,7 @@ typedef struct {
 void sb_append(StringBuilder* sb, const char* str);
 void sb_append_v(StringBuilder* sb, size_t count, const char* strings[]);
 const char* sb_string(StringBuilder* sb);
-StringBuilder sb_join(const char* sep, const char** strs, size_t strc);
+StringBuilder sb_join(const char* sep, size_t strc, const char** strs);
 
 #define sb_append_n(s, n, ...)             \
     do {                                   \

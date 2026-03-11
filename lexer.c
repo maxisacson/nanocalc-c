@@ -58,7 +58,7 @@ const char* tok_to_str(struct Token t) {
     StringBuilder sb = {};
     if (t.value) {
         const char* strs[] = {tt, "(", t.value, ")"};
-        sb = sb_join("", strs, 4);
+        sb = sb_join("", 4, strs);
     } else {
         sb_append(&sb, tt);
     }

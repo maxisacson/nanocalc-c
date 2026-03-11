@@ -23,7 +23,7 @@ int init(struct PlugSpec* spec) {
     return 0;
 };
 
-Value_t hyp2(Value_t* args, size_t nargs) {
+Value_t hyp2(size_t nargs, Value_t* args) {
     Value_t x = args[0];
     Value_t y = args[1];
 

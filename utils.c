@@ -20,7 +20,7 @@ void sb_append(StringBuilder* sb, const char* str) {
     sb->data[sb->size++] = str;
 }
 
-StringBuilder sb_join(const char* sep, const char** strs, size_t strc) {
+StringBuilder sb_join(const char* sep, size_t strc, const char** strs) {
     StringBuilder sb = {};
 
     for (size_t i = 0; i < strc; ++i) {

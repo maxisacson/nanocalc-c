@@ -25,7 +25,7 @@ struct EvalFunc {
     const char** params;  // used for scripted functions
     size_t param_count;
     struct AstNode* body;                               // used for scripted functions
-    struct AstValue (*func)(struct AstValue*, size_t);  // used for builtin functions
+    struct AstValue (*func)(size_t, struct AstValue*);  // used for builtin functions
 };
 
 struct Map map_new();

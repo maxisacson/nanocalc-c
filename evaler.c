@@ -14,7 +14,7 @@ typedef struct AstNode Node_t;
 typedef struct Context Context_t;
 typedef struct RangeValue Range_t;
 typedef struct EvalFunc EvalFunc_t;
-typedef Value_t (*Cmd_t)(Context_t*, Node_t**, size_t);
+typedef Value_t (*Cmd_t)(Context_t*, size_t, Node_t**);
 
 const Value_t NIL = {.type = V_NIL};
 const Value_t INF = {.type = V_INF, .int_value = 1};
@@ -23,8 +23,8 @@ const Value_t FALSE = {.type = V_INT, .int_value = 0};
 
 Value_t range_next(Range_t*);
 
-Value_t cmd_print(Context_t* context, Node_t** args, size_t arg_count) {
-    for (size_t i = 0; i < arg_count; ++i) {
+Value_t cmd_print(Context_t* context, size_t nargs, Node_t** args) {
+    for (size_t i = 0; i < nargs; ++i) {
         Value_t value = eval(args[i], context);
         if (value.type == V_RANGE) {
             bool first = true;
@@ -57,7 +57,7 @@ Value_t make_callable(EvalFunc_t* f) {
     return callable;
 }
 
-EvalFunc_t* evalfunc_new(Context_t* context, const char** params, size_t param_count, Node_t* body, Func_t func) {
+EvalFunc_t* evalfunc_new(Context_t* context, size_t param_count, const char** params, Node_t* body, Func_t func) {
     if (body != NULL && func != NULL) {
         error("cannot specify both body and func\n");
     }
@@ -76,7 +76,7 @@ EvalFunc_t* evalfunc_new(Context_t* context, const char** params, size_t param_c
     return ef;
 }
 
-Value_t cmd_load(Context_t* context, Node_t** args, size_t nargs) {
+Value_t cmd_load(Context_t* context, size_t nargs, Node_t** args) {
     check_nargs(1);
 
     if (args[0]->type != AST_IDENTIFIER) {
@@ -127,7 +127,7 @@ Value_t cmd_load(Context_t* context, Node_t** args, size_t nargs) {
             }
             eval_error("error loading symbol '%s' from plugin '%s': %s\n", fname, name, err);
         }
-        set_value(context, fname, make_callable(evalfunc_new(context, NULL, spec.func_nargs[i], NULL, plug_func)));
+        set_value(context, fname, make_callable(evalfunc_new(context, spec.func_nargs[i], NULL, NULL, plug_func)));
     }
 
     return NIL;
@@ -293,47 +293,47 @@ Value_t c_sqrt_impl(Value_t value) {
     return wrap_float_float1(sqrt, value);
 }
 
-Value_t c_sin(Value_t* args, size_t nargs) {
+Value_t c_sin(size_t nargs, Value_t* args) {
     check_nargs(1);
     return broadcast_func1(c_sin_impl, args[0]);
 }
 
-Value_t c_cos(Value_t* args, size_t nargs) {
+Value_t c_cos(size_t nargs, Value_t* args) {
     check_nargs(1);
     return broadcast_func1(c_cos_impl, args[0]);
 }
 
-Value_t c_tan(Value_t* args, size_t nargs) {
+Value_t c_tan(size_t nargs, Value_t* args) {
     check_nargs(1);
     return broadcast_func1(c_tan_impl, args[0]);
 }
 
-Value_t c_asin(Value_t* args, size_t nargs) {
+Value_t c_asin(size_t nargs, Value_t* args) {
     check_nargs(1);
     return broadcast_func1(c_asin_impl, args[0]);
 }
 
-Value_t c_acos(Value_t* args, size_t nargs) {
+Value_t c_acos(size_t nargs, Value_t* args) {
     check_nargs(1);
     return broadcast_func1(c_acos_impl, args[0]);
 }
 
-Value_t c_atan(Value_t* args, size_t nargs) {
+Value_t c_atan(size_t nargs, Value_t* args) {
     check_nargs(1);
     return broadcast_func1(c_atan_impl, args[0]);
 }
 
-Value_t c_exp(Value_t* args, size_t nargs) {
+Value_t c_exp(size_t nargs, Value_t* args) {
     check_nargs(1);
     return broadcast_func1(c_exp_impl, args[0]);
 }
 
-Value_t c_log(Value_t* args, size_t nargs) {
+Value_t c_log(size_t nargs, Value_t* args) {
     check_nargs(1);
     return broadcast_func1(c_exp_impl, args[0]);
 }
 
-Value_t c_sqrt(Value_t* args, size_t nargs) {
+Value_t c_sqrt(size_t nargs, Value_t* args) {
     check_nargs(1);
     return broadcast_func1(c_sqrt_impl, args[0]);
 }
@@ -341,15 +341,15 @@ Value_t c_sqrt(Value_t* args, size_t nargs) {
 void setup_builtin_context(Context_t* context) {
     context->read_only = true;
 
-    set_value(context, "sin", make_callable(evalfunc_new(context, NULL, 1, NULL, c_sin)));
-    set_value(context, "cos", make_callable(evalfunc_new(context, NULL, 1, NULL, c_cos)));
-    set_value(context, "tan", make_callable(evalfunc_new(context, NULL, 1, NULL, c_tan)));
-    set_value(context, "asin", make_callable(evalfunc_new(context, NULL, 1, NULL, c_asin)));
-    set_value(context, "acos", make_callable(evalfunc_new(context, NULL, 1, NULL, c_acos)));
-    set_value(context, "atan", make_callable(evalfunc_new(context, NULL, 1, NULL, c_atan)));
-    set_value(context, "exp", make_callable(evalfunc_new(context, NULL, 1, NULL, c_exp)));
-    set_value(context, "log", make_callable(evalfunc_new(context, NULL, 1, NULL, c_log)));
-    set_value(context, "sqrt", make_callable(evalfunc_new(context, NULL, 1, NULL, c_sqrt)));
+    set_value(context, "sin", make_callable(evalfunc_new(context, 1, NULL, NULL, c_sin)));
+    set_value(context, "cos", make_callable(evalfunc_new(context, 1, NULL, NULL, c_cos)));
+    set_value(context, "tan", make_callable(evalfunc_new(context, 1, NULL, NULL, c_tan)));
+    set_value(context, "asin", make_callable(evalfunc_new(context, 1, NULL, NULL, c_asin)));
+    set_value(context, "acos", make_callable(evalfunc_new(context, 1, NULL, NULL, c_acos)));
+    set_value(context, "atan", make_callable(evalfunc_new(context, 1, NULL, NULL, c_atan)));
+    set_value(context, "exp", make_callable(evalfunc_new(context, 1, NULL, NULL, c_exp)));
+    set_value(context, "log", make_callable(evalfunc_new(context, 1, NULL, NULL, c_log)));
+    set_value(context, "sqrt", make_callable(evalfunc_new(context, 1, NULL, NULL, c_sqrt)));
 }
 
 Value_t get_value(Context_t* context, const char* name) {
@@ -819,7 +819,7 @@ Value_t eval_identifier(Context_t* context, const char* name) {
     return get_value(context, name);
 }
 
-Value_t eval_stmnts(Context_t* context, Node_t** stmnts, size_t stmnt_count) {
+Value_t eval_stmnts(Context_t* context, size_t stmnt_count, Node_t** stmnts) {
     Value_t result = NIL;
 
     for (size_t i = 0; i < stmnt_count; ++i) {
@@ -829,7 +829,7 @@ Value_t eval_stmnts(Context_t* context, Node_t** stmnts, size_t stmnt_count) {
     return result;
 }
 
-Value_t eval_items(Context_t* context, Node_t** items, size_t item_count) {
+Value_t eval_items(Context_t* context, size_t item_count, Node_t** items) {
     Value_t result = NIL;
 
     result.type = V_LIST;
@@ -843,7 +843,7 @@ Value_t eval_items(Context_t* context, Node_t** items, size_t item_count) {
     return result;
 }
 
-Value_t eval_fcall(Context_t* context, const char* fname, Node_t** params, size_t param_count) {
+Value_t eval_fcall(Context_t* context, const char* fname, size_t param_count, Node_t** params) {
     Value_t callable = get_value(context, fname);
     if (callable.type == V_NIL) {
         eval_error("could not find function: %s\n", fname);
@@ -865,13 +865,13 @@ Value_t eval_fcall(Context_t* context, const char* fname, Node_t** params, size_
         }
         result = eval(f->body, &local);
     } else if (f->func != NULL) {
-        result = f->func(args, param_count);
+        result = f->func(param_count, args);
     }
 
     return result;
 }
 
-Value_t eval_fdef(Context_t* context, const char* fname, Node_t** params, size_t param_count, Node_t* body) {
+Value_t eval_fdef(Context_t* context, const char* fname, size_t param_count, Node_t** params, Node_t* body) {
     const char** names = malloc(param_count * sizeof(const char*));
 
     for (size_t i = 0; i < param_count; ++i) {
@@ -881,7 +881,7 @@ Value_t eval_fdef(Context_t* context, const char* fname, Node_t** params, size_t
         names[i] = params[i]->name;
     }
 
-    EvalFunc_t* ef = evalfunc_new(context, names, param_count, body, NULL);
+    EvalFunc_t* ef = evalfunc_new(context, param_count, names, body, NULL);
     Value_t callable = {.type = V_CALLABLE, .data = ef};
     set_value(context, fname, callable);
 
@@ -1073,9 +1073,9 @@ Value_t eval_range(Context_t* context, Node_t* start, Node_t* stop, Node_t* coun
     return value;
 }
 
-Value_t eval_cmd(Context_t* context, const char* name, Node_t** args, size_t arg_count) {
+Value_t eval_cmd(Context_t* context, const char* name, Node_t** args, size_t nargs) {
     Cmd_t cmd = get_cmd(name);
-    Value_t value = cmd(context, args, arg_count);
+    Value_t value = cmd(context, nargs, args);
     return value;
 };
 
@@ -1090,7 +1090,7 @@ Value_t eval_case(Context_t* context, Node_t* expr, Node_t* pred) {
     return value;
 };
 
-Value_t eval_cases(Context_t* context, Node_t** stmnts, size_t stmnt_count) {
+Value_t eval_cases(Context_t* context, size_t stmnt_count, Node_t** stmnts) {
     Value_t result = NIL;
 
     for (size_t i = 0; i < stmnt_count; ++i) {
@@ -1116,15 +1116,15 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
         case AST_ASSIGNMENT:
             return eval_assignment(context, node->ident, eval(node->rvalue, context));
         case AST_PROGRAM:
-            return eval_stmnts(context, node->stmnts, node->stmnt_count);
+            return eval_stmnts(context, node->stmnt_count, node->stmnts);
         case AST_ITEMS:
-            return eval_items(context, node->items, node->item_count);
+            return eval_items(context, node->item_count, node->items);
         case AST_FCALL:
-            return eval_fcall(context, node->fname, node->params, node->param_count);
+            return eval_fcall(context, node->fname, node->param_count, node->params);
         case AST_FDEF:
-            return eval_fdef(context, node->fname, node->params, node->param_count, node->fbody);
+            return eval_fdef(context, node->fname, node->param_count, node->params, node->fbody);
         case AST_BLOCK:
-            return eval_stmnts(context, node->stmnts, node->stmnt_count);
+            return eval_stmnts(context, node->stmnt_count, node->stmnts);
         case AST_FOR:
             return eval_for(context, node->lvar, node->lexpr, node->lbody);
         case AST_RANGE:
@@ -1134,7 +1134,7 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
         case AST_CASE:
             return eval_case(context, node->cexpr, node->pred);
         case AST_CASES:
-            return eval_cases(context, node->stmnts, node->stmnt_count);
+            return eval_cases(context, node->stmnt_count, node->stmnts);
         default:
             eval_error("unknown AST node type: %s\n", node_type_to_str(node->type));
             exit(1);

@@ -60,7 +60,7 @@ struct RangeValue {
 };
 
 typedef struct AstValue Value_t;
-typedef Value_t (*Func_t)(Value_t*, size_t);
+typedef Value_t (*Func_t)(size_t, Value_t*);
 struct PlugSpec {
     const char* name;
     const char** func_names;

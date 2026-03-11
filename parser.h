@@ -62,21 +62,21 @@ struct AstNode {
 
         // AST_PROGRAM / AST_BLOCK / AST_CASES
         struct {
-            struct AstNode** stmnts;
             size_t stmnt_count;
+            struct AstNode** stmnts;
         };
 
         // AST_ITEMS
         struct {
-            struct AstNode** items;
             size_t item_count;
+            struct AstNode** items;
         };
 
         // AST_FCALL / AST_FDEF
         struct {
             const char* fname;
-            struct AstNode** params;
             size_t param_count;
+            struct AstNode** params;
 
             // AST_FDEF
             struct AstNode* fbody;
@@ -106,8 +106,8 @@ struct AstNode {
         // AST_CMD
         struct {
             const char* cmd;
-            struct AstNode** cargs;
             size_t carg_count;
+            struct AstNode** cargs;
         };
 
         // AST_CASE
@@ -132,8 +132,8 @@ const char* value_type_to_str(enum ValueType value_type);
 
 void parse(struct Parser* parser, struct AstNode* node);
 
-void parse_program(struct Parser*, struct AstNode* node);
-void parse_stmnt(struct Parser*, struct AstNode* node);
+void parse_program(struct Parser* parser, struct AstNode* node);
+void parse_stmnt(struct Parser* parser, struct AstNode* node);
 void parse_expr(struct Parser* parser, struct AstNode* node);
 void parse_disj(struct Parser* parser, struct AstNode* node);
 void parse_conj(struct Parser* parser, struct AstNode* node);
