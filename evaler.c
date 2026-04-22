@@ -98,36 +98,35 @@ Value_t cmd_load(Context_t* context, size_t nargs, Node_t** args) {
     PlugInitFunc_t init = dlsym(handle, "init");
     const char* err = dlerror();
     if (err != NULL) {
-        int rc = dlclose(handle);
-        if (rc != 0) {
-            fprintf(stderr, "%s\n", dlerror());
-        }
         eval_error("error loading init for plugin '%s': %s\n", name, err);
-    }
-
-    PlugSpec_t spec = {};
-    int initrc = init(&spec);
-    if (initrc != 0) {
         int rc = dlclose(handle);
         if (rc != 0) {
             fprintf(stderr, "%s\n", dlerror());
         }
-        eval_error("error initializing plugin '%s': %d\n", name, initrc);
     }
 
-    for (size_t i = 0; i < spec.nfuncs; ++i) {
+    PlugSpec_t* spec = init();
+    if (spec == NULL) {
+        eval_error("error initializing plugin '%s'\n", name);
+        int rc = dlclose(handle);
+        if (rc != 0) {
+            fprintf(stderr, "%s\n", dlerror());
+        }
+    }
+
+    for (size_t i = 0; i < spec->nfuncs; ++i) {
         dlerror();
-        const char* fname = spec.func_names[i];
+        const char* fname = spec->funcs[i].name;
         Func_t plug_func = dlsym(handle, fname);
         const char* err = dlerror();
         if (err != NULL) {
+            eval_error("error loading symbol '%s' from plugin '%s': %s\n", fname, name, err);
             int rc = dlclose(handle);
             if (rc != 0) {
                 fprintf(stderr, "%s\n", dlerror());
             }
-            eval_error("error loading symbol '%s' from plugin '%s': %s\n", fname, name, err);
         }
-        set_value(context, fname, make_callable(evalfunc_new(context, spec.func_nargs[i], NULL, NULL, plug_func)));
+        set_value(context, fname, make_callable(evalfunc_new(context, spec->funcs[i].nargs, NULL, NULL, plug_func)));
     }
 
     return NIL;
@@ -156,23 +155,16 @@ Cmd_t get_cmd(const char* name) {
 };
 
 double as_float(Value_t value) {
-    switch (value.type) {
-        case V_INT:
-            return (double)value.int_value;
-        case V_FLOAT:
-            return value.float_value;
-        default:
-            eval_error("cannot cast to float: %s\n", value_type_to_str(value.type));
-    }
+    return nc_as_float(value);
 }
 
 Value_t make_int(long long x) {
-    Value_t value = {.type = V_INT, .int_value = x};
+    Value_t value = NC_INT(x);
     return value;
 }
 
 Value_t make_float(double x) {
-    Value_t value = {.type = V_FLOAT, .float_value = x};
+    Value_t value = NC_FLOAT(x);
     return value;
 }
 

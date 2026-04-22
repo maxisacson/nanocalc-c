@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define NC_IMPL
+#include "nc.h"
+
 #include "lexer.h"
 #include "parser.h"
 #include "evaler.h"

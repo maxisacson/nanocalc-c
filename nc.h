@@ -3,8 +3,11 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <math.h>
+#include <stdio.h>
+#include "nc_error.h"
 
-#define VALUE_TYPES \
+#define NC_VALUE_TYPES_X \
     X(V_NIL)        \
     X(V_INT)        \
     X(V_FLOAT)      \
@@ -16,7 +19,7 @@
 
 enum ValueType {
 #define X(x) x,
-    VALUE_TYPES
+    NC_VALUE_TYPES_X
 #undef X
 };
 
@@ -61,14 +64,56 @@ struct RangeValue {
 
 typedef struct AstValue Value_t;
 typedef Value_t (*Func_t)(size_t, Value_t*);
+
+struct FuncSpec {
+    const char* name;
+    size_t nargs;
+};
+typedef struct FuncSpec FuncSpec_t;
+
 struct PlugSpec {
     const char* name;
-    const char** func_names;
-    size_t* func_nargs;
-    Func_t* funcs;
     size_t nfuncs;
+    FuncSpec_t* funcs;
 };
 typedef struct PlugSpec PlugSpec_t;
-typedef int (*PlugInitFunc_t)(PlugSpec_t*);
+typedef PlugSpec_t* (*PlugInitFunc_t)();
+
+#define NC_INT(x) {.type = V_INT, .int_value = (x)}
+#define NC_FLOAT(x) {.type = V_FLOAT, .float_value = (x)}
+#define NC_AS_FLOAT(v) nc_as_float(v)
+
+const char* nc_value_type_to_str(enum ValueType value_type);
+double nc_as_float(Value_t value);
+
+#ifdef NC_IMPL
+
+inline const char* nc_value_type_to_str(enum ValueType value_type) {
+    switch (value_type) {
+#define X(x) \
+    case x:  \
+        return #x;
+        NC_VALUE_TYPES_X
+#undef X
+        default:
+            error("unknown value type: %d\n", value_type);
+    }
+}
+
+inline double nc_as_float(Value_t value) {
+    switch (value.type) {
+        case V_INT:
+            return (double)value.int_value;
+            break;
+        case V_FLOAT:
+            return value.float_value;
+            break;
+        default:
+            error("cannot cast to float: %s\n", nc_value_type_to_str(value.type));
+            break;
+    }
+}
+
+#endif
 
 #endif

@@ -1,36 +1,44 @@
 #include <stdio.h>
 #include <stdlib.h>
+
+#define NC_IMPL
 #include "nc.h"
 
-double as_float(Value_t value) {
-    switch (value.type) {
-        case V_INT:
-            return (double)value.int_value;
-        case V_FLOAT:
-            return value.float_value;
-        default:
-            fprintf(stderr, "cannot cast value\n");
-            exit(1);
-    }
-}
-
-int init(struct PlugSpec* spec) {
-    spec->name = "math";
-    spec->nfuncs = 1;
-    spec->func_names = (const char*[]){"hyp2"};
-    spec->func_nargs = malloc(sizeof(size_t));
-    spec->func_nargs[0] = 2;
-    return 0;
+static FuncSpec_t functions[] = {
+    {.name = "hyp2", .nargs = 2},
+    {.name = "hyp", .nargs = 2},
 };
 
-Value_t hyp2(size_t nargs, Value_t* args) {
+static PlugSpec_t plugin_spec = {
+    .name = "math",
+    .nfuncs = 2,
+    .funcs = functions,
+};
+
+PlugSpec_t* init() {
+    return &plugin_spec;
+};
+
+Value_t hyp2(size_t /* nargs */, Value_t* args) {
     Value_t x = args[0];
     Value_t y = args[1];
 
-    double xf = as_float(x);
-    double yf = as_float(y);
+    double xf = NC_AS_FLOAT(x);
+    double yf = NC_AS_FLOAT(y);
 
-    Value_t result = {.type = V_FLOAT, .float_value = xf * xf + yf * yf};
+    Value_t result = NC_FLOAT(xf * xf + yf * yf);
+
+    return result;
+}
+
+Value_t hyp(size_t /* nargs */, Value_t* args) {
+    Value_t x = args[0];
+    Value_t y = args[1];
+
+    double xf = NC_AS_FLOAT(x);
+    double yf = NC_AS_FLOAT(y);
+
+    Value_t result = NC_FLOAT(sqrt(xf * xf + yf * yf));
 
     return result;
 }

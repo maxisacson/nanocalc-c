@@ -207,15 +207,7 @@ const char* node_type_to_str(enum NodeType node_type) {
 }
 
 const char* value_type_to_str(enum ValueType value_type) {
-    switch (value_type) {
-#define X(x) \
-    case x:  \
-        return #x;
-        VALUE_TYPES
-#undef X
-        default:
-            error("unknown value type: %d\n", value_type);
-    }
+    return nc_value_type_to_str(value_type);
 }
 
 const char* ast_value_to_str(struct AstValue* value) {
