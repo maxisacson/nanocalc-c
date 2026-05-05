@@ -2,8 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define NC_IMPL
-#include "nc.h"
+#include "nc_types.h"
 
 #include "lexer.h"
 #include "parser.h"

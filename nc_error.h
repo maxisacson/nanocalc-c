@@ -1,6 +1,9 @@
 #ifndef NC_ERROR_H
 #define NC_ERROR_H
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #define lineno() fprintf(stderr, "%s:%d -> %s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__)
 
 #define error(...)                          \

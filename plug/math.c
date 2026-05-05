@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NC_IMPL
 #include "nc.h"
+#include <math.h>
 
 static FuncSpec_t functions[] = {
     {.name = "hyp2", .nargs = 2},

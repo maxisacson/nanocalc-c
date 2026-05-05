@@ -206,10 +206,6 @@ const char* node_type_to_str(enum NodeType node_type) {
     }
 }
 
-const char* value_type_to_str(enum ValueType value_type) {
-    return nc_value_type_to_str(value_type);
-}
-
 const char* ast_value_to_str(struct AstValue* value) {
     StringBuilder sb = {};
 

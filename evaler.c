@@ -154,20 +154,6 @@ Cmd_t get_cmd(const char* name) {
     return NULL;
 };
 
-double as_float(Value_t value) {
-    return nc_as_float(value);
-}
-
-Value_t make_int(long long x) {
-    Value_t value = NC_INT(x);
-    return value;
-}
-
-Value_t make_float(double x) {
-    Value_t value = NC_FLOAT(x);
-    return value;
-}
-
 size_t distance(long long a, long long b) {
     return a < b ? (size_t)(b - a) : (size_t)(a - b);
 }
@@ -373,32 +359,6 @@ void set_value(Context_t* context, const char* name, struct AstValue value) {
 
     struct Item item = {.key = name, .value = value};
     context->map.items[context->map.size++] = item;
-}
-
-bool is_negative(Value_t value) {
-    switch (value.type) {
-        case V_INT:
-            return value.int_value < 0;
-        case V_FLOAT:
-            return value.float_value < 0;
-        default:
-            eval_error("incompatible type: %s\n", value_type_to_str(value.type));
-    };
-}
-
-bool is_truthy(Value_t value) {
-    switch (value.type) {
-        case V_INT:
-            return value.int_value != 0;
-        case V_FLOAT:
-            return value.float_value != 0;
-        case V_STRING:
-            return strlen(value.string_value) > 0;
-        case V_LIST:
-            return value.list_size > 0;
-        default:
-            return false;
-    }
 }
 
 #define binop_impl(op)                                                                                           \
