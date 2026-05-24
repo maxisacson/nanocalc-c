@@ -37,8 +37,11 @@ int main(int argc, const char* argv[]) {
         text = argv[1];
     }
 
+    struct Lexer lexer;
+    lexer.line = 1;
+    lexer.col = 0;
     struct Token* tokens;
-    tokenize(text, &tokens);
+    tokenize(&lexer, text, &tokens);
 
     struct Parser parser;
     parser.tokens = tokens;

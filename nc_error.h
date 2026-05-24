@@ -11,9 +11,9 @@
     fprintf(stderr, "error: " __VA_ARGS__); \
     exit(1)
 
-#define syntax_error(...)                          \
+#define syntax_error(tok, fmt, ...)                          \
     lineno();                                      \
-    fprintf(stderr, "syntax_error: " __VA_ARGS__); \
+    fprintf(stderr, "syntax_error: " fmt " (%d:%d)\n", __VA_ARGS__, (tok)->line, (tok)->col); \
     exit(1)
 
 #define eval_error(...)                          \

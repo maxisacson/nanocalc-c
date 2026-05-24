@@ -47,18 +47,18 @@ size_t node_count = 0;
 
 #define expect(token_type)                                                                                           \
     if (parser->tok->type != (token_type)) {                                                                         \
-        syntax_error("expected %s but got %s\n", tok_type_to_str((token_type)), tok_type_to_str(parser->tok->type)); \
+        syntax_error(parser->tok, "expected %s but got %s", tok_type_to_str((token_type)), tok_type_to_str(parser->tok->type)); \
     }
 
 #define expect2(token_type1, token_type2)                                                                              \
     if (parser->tok->type != (token_type1) && parser->tok->type != (token_type2)) {                                    \
-        syntax_error("expected %s or %s but got %s\n", tok_type_to_str((token_type1)), tok_type_to_str((token_type2)), \
+        syntax_error(parser->tok, "expected %s or %s but got %s", tok_type_to_str((token_type1)), tok_type_to_str((token_type2)), \
                      tok_type_to_str(parser->tok->type));                                                              \
     }
 
 #define expect3(tt1, tt2, tt3)                                                                              \
     if (parser->tok->type != (tt1) && parser->tok->type != (tt2) && parser->tok->type != (tt3)) {           \
-        syntax_error("expected %s, %s, or %s but got %s\n", tok_type_to_str((tt1)), tok_type_to_str((tt2)), \
+        syntax_error(parser->tok, "expected %s, %s, or %s but got %s", tok_type_to_str((tt1)), tok_type_to_str((tt2)), \
                      tok_type_to_str((tt3)), tok_type_to_str(parser->tok->type));                           \
     }
 
@@ -567,7 +567,7 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
                 node->type = AST_FDEF;
                 for (size_t ip = 0; ip < node->param_count; ++ip) {
                     if (node->params[ip]->type != AST_IDENTIFIER) {
-                        syntax_error("expected identifier but got %s\n", node_type_to_str(node->params[ip]->type));
+                        syntax_error(parser->tok, "expected identifier but got %s", node_type_to_str(node->params[ip]->type));
                     }
                 }
                 node->fbody = node_new();
@@ -713,6 +713,6 @@ void parse_atom(struct Parser* parser, struct AstNode* node) {
             parse_block(parser, node);
         } break;
         default:
-            syntax_error("unexpected token: %s\n", tok_to_str(*parser->tok));
+            syntax_error(parser->tok, "unexpected token: %s", tok_to_str(*parser->tok));
     };
 }

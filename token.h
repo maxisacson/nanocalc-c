@@ -74,6 +74,8 @@ enum TokenType { TOKEN_TYPES };
 struct Token {
     enum TokenType type;
     const char* value;
+    int line;
+    int col;
 };
 
 #endif
