@@ -411,7 +411,16 @@ Value_t op_times(Value_t lhs, Value_t rhs) {
 
 Value_t op_divide(Value_t lhs, Value_t rhs) {
     Value_t result;
-    binop_impl(/);
+    if (lhs.type == V_INT && rhs.type == V_INT) {
+        lldiv_t dv = lldiv(lhs.int_value, rhs.int_value);
+        if (dv.rem == 0) {
+            return make_int(dv.quot);
+        } else {
+            return make_float(dv.quot + (double)dv.rem / (double)rhs.int_value);
+        }
+    } else {
+        binop_impl(/);
+    }
     return result;
 }
 
