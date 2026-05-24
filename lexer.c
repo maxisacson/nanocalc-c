@@ -117,10 +117,6 @@ void tok_number(struct Lexer* lexer, struct TokenArray* arr, const char** ptr) {
 
     enum TokenType tt = TOK_INTEGER;
 
-    if (**ptr == '-') {
-        (*ptr)++;
-    }
-
     while ('0' <= **ptr && **ptr <= '9') {
         (*ptr)++;
     }
@@ -277,13 +273,9 @@ int tokenize(struct Lexer* lexer, const char* string, struct Token* tokens[]) {
                 ++lexer->col;
                 break;
             case '-':
-                if (*peek == '.' || ('0' <= *peek && *peek <= '9')) {
-                    tok_number(lexer, &arr, &s);
-                } else {
-                    ta_append(&arr, TOK_MINUS, 0, lexer->line, lexer->col);
-                    ++s;
-                    ++lexer->col;
-                }
+                ta_append(&arr, TOK_MINUS, 0, lexer->line, lexer->col);
+                ++s;
+                ++lexer->col;
                 break;
             case '+':
                 ta_append(&arr, TOK_PLUS, 0, lexer->line, lexer->col);
