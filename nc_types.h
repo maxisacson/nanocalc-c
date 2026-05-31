@@ -71,6 +71,7 @@ bool is_truthy(Value_t value);
 
 #define NC_INT(x) {.type = V_INT, .int_value = (x)}
 #define NC_FLOAT(x) {.type = V_FLOAT, .float_value = (x)}
+#define NC_LIST(n) {.type = V_LIST, .list_size = (n), .list_value = malloc((n) * sizeof(Value_t))}
 #define NC_AS_FLOAT(v) as_float(v)
 
 #endif

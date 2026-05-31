@@ -847,6 +847,57 @@ Value_t eval_items(Context_t* context, size_t item_count, Node_t** items) {
     return result;
 }
 
+Value_t call_func(struct EvalFunc* f, size_t nargs, Value_t* args) {
+    Value_t result = NIL;
+
+    struct Context local = context_new(f->context);
+    if (f->body != NULL) {
+        for (size_t i = 0; i < nargs; ++i) {
+            set_value(&local, f->params[i], args[i]);
+        }
+        result = eval(f->body, &local);
+    } else if (f->func != NULL) {
+        result = f->func(nargs, args);
+    }
+
+    return result;
+}
+
+Value_t reduce_func(struct EvalFunc* f, size_t nargs, Value_t* args) {
+    size_t count = 0;
+    for (size_t i = 0; i < nargs; ++i) {
+        if (args[i].type != V_LIST) {
+            continue;
+        }
+
+        if (count == 0) {
+            count = args[i].list_size;
+        } else if (args[i].list_size != count) {
+            eval_error("cannot reduce a function over lists of different size");
+        }
+    }
+
+    if (count == 0) {
+        return call_func(f, nargs, args);
+    }
+
+    Value_t result = NC_LIST(count);
+
+    Value_t* reduced_args = malloc(nargs * sizeof(Value_t));
+    for (size_t k = 0; k < count; ++k) {
+        for (size_t i = 0; i < nargs; ++i) {
+            if (args[i].type != V_LIST) {
+                reduced_args[i] = args[i];
+            } else {
+                reduced_args[i] = args[i].list_value[k];
+            }
+        }
+        result.list_value[k] = call_func(f, nargs, reduced_args);
+    }
+
+    return result;
+}
+
 Value_t eval_fcall(Context_t* context, const char* fname, size_t param_count, Node_t** params) {
     Value_t callable = get_value(context, fname);
     if (callable.type == V_NIL) {
@@ -854,25 +905,13 @@ Value_t eval_fcall(Context_t* context, const char* fname, size_t param_count, No
     }
     struct EvalFunc* f = callable.data;
 
-    struct Context local = context_new(f->context);
-
     Value_t* args = malloc(param_count * sizeof(Value_t));
     for (size_t i = 0; i < param_count; ++i) {
         Value_t param = eval(params[i], context);
         args[i] = param;
     }
 
-    Value_t result = NIL;
-    if (f->body != NULL) {
-        for (size_t i = 0; i < param_count; ++i) {
-            set_value(&local, f->params[i], args[i]);
-        }
-        result = eval(f->body, &local);
-    } else if (f->func != NULL) {
-        result = f->func(param_count, args);
-    }
-
-    return result;
+    return reduce_func(f, param_count, args);
 }
 
 Value_t eval_fdef(Context_t* context, const char* fname, size_t param_count, Node_t** params, Node_t* body) {
