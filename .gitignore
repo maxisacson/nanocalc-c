@@ -3,3 +3,5 @@ nc
 *.svg
 .clangd
 *.so
+__pycache__
+.python-version

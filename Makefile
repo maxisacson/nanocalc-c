@@ -31,3 +31,7 @@ plug:
 .PHONY: plug-clean
 plug-clean:
 	$(MAKE) -C plug clean
+
+.PHONY: test
+test:
+	cd tests; uv run pytest
