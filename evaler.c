@@ -132,6 +132,48 @@ Value_t cmd_load(Context_t* context, size_t nargs, Node_t** args) {
     return NIL;
 };
 
+Value_t cmd_table(Context_t* context, size_t nargs, Node_t** args) {
+    size_t ncols = nargs;
+    size_t nrows = 0;
+
+    Value_t* columns = malloc(sizeof(Value_t) * ncols);
+
+    for (size_t i = 0; i < nargs; ++i) {
+        Value_t val = eval(args[i], context);
+        // // TODO: handle V_RANGE
+        if (val.type == V_LIST) {
+            if (nrows == 0 || nrows == 1) {
+                nrows = val.list_size;
+            } else if (nrows != val.list_size) {
+                eval_error("table requires all argumnets to be of the same size, or size 1");
+            }
+        } else if (nrows == 0) {
+            nrows = 1;
+        }
+        columns[i] = val;
+    }
+
+    for (size_t j = 0; j < nrows; ++j) {
+        StringBuilder sb_row = {};
+        for (size_t i = 0; i < ncols; ++i) {
+            const char* e = NULL;
+            if (columns[i].type == V_LIST) {
+                e = ast_value_to_str(&columns[i].list_value[j]);
+            } else {
+                e = ast_value_to_str(&columns[i]);
+            }
+            if (i > 0) {
+                sb_append(&sb_row, " ");
+            }
+            sb_append(&sb_row, e);
+        }
+        const char* row = sb_string(&sb_row);
+        printf("%s\n", row);
+    }
+
+    return NIL;
+};
+
 struct CmdItem {
     const char* name;
     Cmd_t cmd;
@@ -141,6 +183,7 @@ typedef struct CmdItem CmdItem_t;
 const CmdItem_t commands[] = {
     {"print", cmd_print},
     {"load", cmd_load},
+    {"table", cmd_table},
 };
 
 Cmd_t get_cmd(const char* name) {
@@ -1036,6 +1079,9 @@ Value_t eval_range(Context_t* context, Node_t* start, Node_t* stop, Node_t* coun
 
 Value_t eval_cmd(Context_t* context, const char* name, Node_t** args, size_t nargs) {
     Cmd_t cmd = get_cmd(name);
+    if (!cmd) {
+        eval_error("did not find command: %s\n", name);
+    }
     Value_t value = cmd(context, nargs, args);
     return value;
 };
