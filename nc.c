@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include "nc_types.h"
 
@@ -10,6 +11,11 @@
 #include "evaler.h"
 
 #define BUFSIZE 4095  // pagesize - 1
+
+// Command line option flags
+bool DEBUG = false;
+bool EMIT_TOKENS = false;
+bool EMIT_AST = false;
 
 const char* read_file(FILE* fd) {
     char buf[BUFSIZE];
@@ -84,18 +90,83 @@ void repl() {
     // TODO: check eof and errors
 }
 
-int main(int argc, const char* argv[]) {
-    if (argc == 1 && isatty(STDIN_FILENO)) {
-        repl();
-        return EXIT_SUCCESS;
+void usage(const char* prog) {
+    printf("Usage: %s [options] [expression]\n", prog);
+    printf("\n");
+    printf("If expression is not given, read from standard input\n");
+    printf("\n");
+    printf("Options:\n"
+           "     -h|--help     Displag this message and exit\n"
+           "     --debug       Enable debug output\n"
+           "     --tokens      Emit the token stream to stdout\n"
+           "     --ast         Emit the AST to file\n"
+          );
+}
+
+int parse_args(int argc, char* argv[]) {
+    int opt, longindex;
+    for (;;) {
+        // clang-format off
+        static struct option long_options[] = {
+            {"help", no_argument, 0, 'h'},
+            {"debug", no_argument, 0, 0},
+            {"tokens", no_argument, 0, 0},
+            {"ast", no_argument, 0, 0},
+            {0, 0, 0, 0},
+        };
+        // clang-format on
+
+        opt = getopt_long(argc, argv, "h", long_options, &longindex);
+
+        if (opt == -1) {
+            break;
+        }
+
+        switch (opt) {
+            case 0:
+                if (strcmp(long_options[longindex].name, "debug") == 0) {
+                    DEBUG = true;
+                } else if (strcmp(long_options[longindex].name, "ast") == 0) {
+                    EMIT_AST = true;
+                } else if (strcmp(long_options[longindex].name, "tokens") == 0) {
+                    EMIT_TOKENS = true;
+                }
+                break;
+            case 'h':
+                usage(argv[0]);
+                exit(EXIT_SUCCESS);
+                break;
+            default:
+                usage(argv[0]);
+                exit(EXIT_FAILURE);
+                break;
+        }
     }
 
-    const char* text;
+    if (DEBUG) {
+        EMIT_AST = true;
+        EMIT_TOKENS = true;
+    }
 
-    if (argc < 2) {
-        text = read_file(stdin);
+    return optind;
+}
+
+int main(int argc, char* argv[]) {
+    int iarg = parse_args(argc, argv);
+
+    const char* text;
+    if (iarg == argc) {
+        if (isatty(STDIN_FILENO)) {
+            repl();
+            return EXIT_SUCCESS;
+        } else {
+            text = read_file(stdin);
+        }
+    } else if (iarg < argc) {
+        text = argv[iarg];
     } else {
-        text = argv[1];
+        usage(argv[0]);
+        return EXIT_FAILURE;
     }
 
     struct Lexer lexer;
@@ -108,24 +179,25 @@ int main(int argc, const char* argv[]) {
     parser.tokens = tokens;
     parser.tok = tokens;
 
-    while (tokens->type != TOK_EOF) {
-        printf("%s ", tok_to_str(*tokens++));
-    }
+    if (EMIT_TOKENS) {
+        while (tokens->type != TOK_EOF) {
+            printf("%s ", tok_to_str(*tokens++));
+        }
 
-    printf("%s ", tok_to_str(*tokens++));
-    printf("\n");
+        printf("%s ", tok_to_str(*tokens++));
+        printf("\n");
+    }
 
     struct AstNode root;
     parse(&parser, &root);
 
-    draw_ast(&root);
+    if (EMIT_AST) {
+        draw_ast(&root);
+    }
 
     struct Context builtin = context_new(NULL);
     setup_builtin_context(&builtin);
     struct Context context = context_new(&builtin);
-
-    struct AstValue val = {.type = V_INT, .int_value = 42};
-    set_value(&context, "x", val);
 
     struct AstValue result = eval(&root, &context);
 
