@@ -4,7 +4,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef DEBUG
 #define lineno() fprintf(stderr, "%s:%d -> %s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__)
+#else
+#define lineno()
+#endif
 
 #define error(...)                          \
     lineno();                               \
@@ -13,7 +17,7 @@
 
 #define syntax_error(tok, fmt, ...)                          \
     lineno();                                      \
-    fprintf(stderr, "syntax_error: " fmt " (%d:%d)\n", __VA_ARGS__, (tok)->line, (tok)->col); \
+    fprintf(stderr, "syntax_error: " fmt " (line %d, column %d)\n", __VA_ARGS__, (tok)->line, (tok)->col); \
     exit(1)
 
 #define eval_error(...)                          \

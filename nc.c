@@ -9,13 +9,14 @@
 #include "lexer.h"
 #include "parser.h"
 #include "evaler.h"
+#include "version.h"
 
 #define BUFSIZE 4095  // pagesize - 1
 
 // Command line option flags
-bool DEBUG = false;
-bool EMIT_TOKENS = false;
-bool EMIT_AST = false;
+bool FLAG_DEBUG = false;
+bool FLAG_EMIT_TOKENS = false;
+bool FLAG_EMIT_AST = false;
 
 const char* read_file(FILE* fd) {
     char buf[BUFSIZE];
@@ -93,11 +94,20 @@ void usage(const char* prog) {
     printf("If expression is not given, read from standard input\n");
     printf("\n");
     printf("Options:\n"
-           "     -h|--help     Displag this message and exit\n"
+           "     -h|--help     Display this message and exit\n"
+           "     -V|--version  Display version info and exit\n"
            "     --debug       Enable debug output\n"
            "     --tokens      Emit the token stream to stdout\n"
            "     --ast         Emit the AST to file\n"
           );
+}
+
+void print_version() {
+#ifdef DEBUG
+    printf("nanocalc v%d.%d.%d-%s+%d (debug)\n", NC_VERSION_MAJOR, NC_VERSION_MINOR, NC_VERSION_PATCH, NC_VERSION_PRERELEASE, NC_VERSION_BUILD);
+#else
+    printf("nanocalc v%d.%d.%d\n", NC_VERSION_MAJOR, NC_VERSION_MINOR, NC_VERSION_PATCH);
+#endif
 }
 
 int parse_args(int argc, char* argv[]) {
@@ -109,11 +119,12 @@ int parse_args(int argc, char* argv[]) {
             {"debug", no_argument, 0, 0},
             {"tokens", no_argument, 0, 0},
             {"ast", no_argument, 0, 0},
+            {"version", no_argument, 0, 'V'},
             {0, 0, 0, 0},
         };
         // clang-format on
 
-        opt = getopt_long(argc, argv, "h", long_options, &longindex);
+        opt = getopt_long(argc, argv, "hV", long_options, &longindex);
 
         if (opt == -1) {
             break;
@@ -122,15 +133,19 @@ int parse_args(int argc, char* argv[]) {
         switch (opt) {
             case 0:
                 if (strcmp(long_options[longindex].name, "debug") == 0) {
-                    DEBUG = true;
+                    FLAG_DEBUG = true;
                 } else if (strcmp(long_options[longindex].name, "ast") == 0) {
-                    EMIT_AST = true;
+                    FLAG_EMIT_AST = true;
                 } else if (strcmp(long_options[longindex].name, "tokens") == 0) {
-                    EMIT_TOKENS = true;
+                    FLAG_EMIT_TOKENS = true;
                 }
                 break;
             case 'h':
                 usage(argv[0]);
+                exit(EXIT_SUCCESS);
+                break;
+            case 'V':
+                print_version();
                 exit(EXIT_SUCCESS);
                 break;
             default:
@@ -140,9 +155,9 @@ int parse_args(int argc, char* argv[]) {
         }
     }
 
-    if (DEBUG) {
-        EMIT_AST = true;
-        EMIT_TOKENS = true;
+    if (FLAG_DEBUG) {
+        FLAG_EMIT_AST = true;
+        FLAG_EMIT_TOKENS = true;
     }
 
     return optind;
@@ -174,7 +189,7 @@ int main(int argc, char* argv[]) {
     parser.tokens = tokens;
     parser.tok = tokens;
 
-    if (EMIT_TOKENS) {
+    if (FLAG_EMIT_TOKENS) {
         while (tokens->type != TOK_EOF) {
             printf("%s ", tok_to_str(*tokens++));
         }
@@ -186,7 +201,7 @@ int main(int argc, char* argv[]) {
     struct AstNode root;
     parse(&parser, &root);
 
-    if (EMIT_AST) {
+    if (FLAG_EMIT_AST) {
         draw_ast(&root);
     }
 

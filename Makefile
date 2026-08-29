@@ -15,7 +15,7 @@ release: nc plug
 
 .PHONY: nc-dbg
 nc-dbg: $(SRCS)
-	$(CC) $(CFLAGS_DBG) $(LIBS) $(LDFLAGS) $^ -o$(PROG)
+	$(CC) $(CFLAGS_DBG) $(LIBS) $(LDFLAGS) -DDEBUG $^ -o$(PROG)
 
 nc: $(SRCS)
 	$(CC) $(CFLAGS) $(LIBS) $(LDFLAGS) $^ -o$(PROG)
