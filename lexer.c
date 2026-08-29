@@ -6,6 +6,17 @@
 #include "utils.h"
 #include "lexer.h"
 
+struct Lexer lexer_new(const char* source) {
+    struct Lexer lexer = {
+        .line = 1,
+        .col = 0,
+        .offset = 0,
+        .source = source,
+    };
+
+    return lexer;
+}
+
 bool tok_is_keyword(const char* str) {
 #define X(x)                    \
     if (strcmp(str, #x) == 0) { \
@@ -102,12 +113,12 @@ struct TokenArray {
     struct Token* data;
 };
 
-int ta_append(struct TokenArray* arr, enum TokenType type, const char* value, int line, int col) {
+int ta_append(struct TokenArray* arr, enum TokenType type, const char* value, struct Lexer* lexer) {
     if (arr->size >= arr->capacity) {
         arr->capacity *= 2;
         arr->data = realloc(arr->data, arr->capacity * sizeof(struct Token));
     }
-    struct Token t = {.type = type, .value = value, .line = line, .col = col};
+    struct Token t = {.type = type, .value = value, .line = lexer->line, .col = lexer->col};
     arr->data[arr->size++] = t;
     return 0;
 }
@@ -150,7 +161,7 @@ void tok_number(struct Lexer* lexer, struct TokenArray* arr, const char** ptr) {
     size_t len = *ptr - start;
     const char* value = strndup(start, len);
 
-    ta_append(arr, tt, value, lexer->line, lexer->col);
+    ta_append(arr, tt, value, lexer);
     lexer->col += len;
 }
 
@@ -163,11 +174,11 @@ void tok_ident_or_keyword(struct Lexer* lexer, struct TokenArray* arr, const cha
     const char* name = strndup(start, len);
 
     if (tok_is_keyword(name)) {
-        ta_append(arr, tok_kw_to_tt(name), 0, lexer->line, lexer->col);
+        ta_append(arr, tok_kw_to_tt(name), 0, lexer);
     } else if (tok_is_command(name)) {
-        ta_append(arr, TOK_CMD, name, lexer->line, lexer->col);
+        ta_append(arr, TOK_CMD, name, lexer);
     } else {
-        ta_append(arr, TOK_IDENTIFIER, name, lexer->line, lexer->col);
+        ta_append(arr, TOK_IDENTIFIER, name, lexer);
     }
 
     lexer->col += len;
@@ -183,15 +194,15 @@ void tok_string(struct Lexer* lexer, struct TokenArray* arr, const char** ptr) {
     const char* value = strndup(start, len);
     ++*ptr;
 
-    ta_append(arr, TOK_STRING, value, lexer->line, lexer->col);
+    ta_append(arr, TOK_STRING, value, lexer);
     lexer->col += len + 1;
 }
 
-int tokenize(struct Lexer* lexer, const char* string, struct Token* tokens[]) {
+int tokenize(struct Lexer* lexer, struct Token* tokens[]) {
     struct TokenArray arr = {.capacity = 16};
     arr.data = malloc(arr.capacity * sizeof(struct Token));
 
-    const char* s = string;
+    const char* s = lexer->source;
     const char* peek;
     while (*s) {
         peek = s + 1;
@@ -202,7 +213,7 @@ int tokenize(struct Lexer* lexer, const char* string, struct Token* tokens[]) {
                 ++lexer->col;
                 continue;
             case '\n':
-                ta_append(&arr, TOK_EOL, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_EOL, 0, lexer);
                 ++s;
                 lexer->col = 0;
                 ++lexer->line;
@@ -214,142 +225,142 @@ int tokenize(struct Lexer* lexer, const char* string, struct Token* tokens[]) {
                     }
                     break;
                 }
-                ta_append(&arr, TOK_HASH, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_HASH, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '<':
                 if (*peek == '=') {
-                    ta_append(&arr, TOK_LEQ, 0, lexer->line, lexer->col);
+                    ta_append(&arr, TOK_LEQ, 0, lexer);
                     s += 2;
                     lexer->col += 2;
                 } else {
-                    ta_append(&arr, TOK_LT, 0, lexer->line, lexer->col);
+                    ta_append(&arr, TOK_LT, 0, lexer);
                     ++s;
                     ++lexer->col;
                 }
                 break;
             case '>':
                 if (*peek == '=') {
-                    ta_append(&arr, TOK_GEQ, 0, lexer->line, lexer->col);
+                    ta_append(&arr, TOK_GEQ, 0, lexer);
                     s += 2;
                     lexer->col += 2;
                 } else {
-                    ta_append(&arr, TOK_GT, 0, lexer->line, lexer->col);
+                    ta_append(&arr, TOK_GT, 0, lexer);
                     ++s;
                     ++lexer->col;
                 }
                 break;
             case '=':
                 if (*peek == '=') {
-                    ta_append(&arr, TOK_EEQ, 0, lexer->line, lexer->col);
+                    ta_append(&arr, TOK_EEQ, 0, lexer);
                     s += 2;
                     lexer->col += 2;
                 } else {
-                    ta_append(&arr, TOK_EQ, 0, lexer->line, lexer->col);
+                    ta_append(&arr, TOK_EQ, 0, lexer);
                     ++s;
                     ++lexer->col;
                 }
                 break;
             case '!':
                 if (*peek == '=') {
-                    ta_append(&arr, TOK_NEQ, 0, lexer->line, lexer->col);
+                    ta_append(&arr, TOK_NEQ, 0, lexer);
                     s += 2;
                     lexer->col += 2;
                 } else {
-                    ta_append(&arr, TOK_BANG, 0, lexer->line, lexer->col);
+                    ta_append(&arr, TOK_BANG, 0, lexer);
                     ++s;
                     ++lexer->col;
                 }
                 break;
             case '&':
-                ta_append(&arr, TOK_AMP, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_AMP, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '|':
-                ta_append(&arr, TOK_PIPE, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_PIPE, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '-':
-                ta_append(&arr, TOK_MINUS, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_MINUS, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '+':
-                ta_append(&arr, TOK_PLUS, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_PLUS, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '*':
-                ta_append(&arr, TOK_STAR, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_STAR, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '/':
-                ta_append(&arr, TOK_FSLASH, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_FSLASH, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '^':
-                ta_append(&arr, TOK_POWER, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_POWER, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '%':
-                ta_append(&arr, TOK_PERC, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_PERC, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case ',':
-                ta_append(&arr, TOK_COMMA, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_COMMA, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '(':
-                ta_append(&arr, TOK_LPAREN, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_LPAREN, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case ')':
-                ta_append(&arr, TOK_RPAREN, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_RPAREN, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case ':':
-                ta_append(&arr, TOK_COLON, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_COLON, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case ';':
-                ta_append(&arr, TOK_SEMICOLON, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_SEMICOLON, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '[':
-                ta_append(&arr, TOK_LBRACKET, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_LBRACKET, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case ']':
-                ta_append(&arr, TOK_RBRACKET, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_RBRACKET, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '{':
-                ta_append(&arr, TOK_LBRACE, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_LBRACE, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '}':
-                ta_append(&arr, TOK_RBRACE, 0, lexer->line, lexer->col);
+                ta_append(&arr, TOK_RBRACE, 0, lexer);
                 ++s;
                 ++lexer->col;
                 break;
             case '.':
                 if (*peek == '.') {
-                    ta_append(&arr, TOK_DOTDOT, 0, lexer->line, lexer->col);
+                    ta_append(&arr, TOK_DOTDOT, 0, lexer);
                     s += 2;
                     lexer->col += 2;
                 } else {
@@ -371,7 +382,7 @@ int tokenize(struct Lexer* lexer, const char* string, struct Token* tokens[]) {
         };
     }
 
-    ta_append(&arr, TOK_EOF, 0, lexer->line, lexer->col);
+    ta_append(&arr, TOK_EOF, 0, lexer);
     *tokens = arr.data;
 
     return arr.size;

@@ -61,15 +61,12 @@ void repl() {
     setup_builtin_context(&builtin);
     struct Context context = context_new(&builtin);
 
-    struct Lexer lexer;
-    lexer.line = 1;
-    lexer.col = 0;
-
     printf("nc> ");
     fflush(stdout);
     while (get_line(&text)) {
+        struct Lexer lexer = lexer_new(text);
         struct Token* tokens;
-        tokenize(&lexer, text, &tokens);
+        tokenize(&lexer, &tokens);
 
         struct Parser parser;
         parser.tokens = tokens;
@@ -169,11 +166,9 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    struct Lexer lexer;
-    lexer.line = 1;
-    lexer.col = 0;
+    struct Lexer lexer = lexer_new(text);
     struct Token* tokens;
-    tokenize(&lexer, text, &tokens);
+    tokenize(&lexer, &tokens);
 
     struct Parser parser;
     parser.tokens = tokens;
