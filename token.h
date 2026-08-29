@@ -76,6 +76,8 @@ struct Token {
     const char* value;
     int line;
     int col;
+    size_t offset;
+    const char* source;
 };
 
 #endif

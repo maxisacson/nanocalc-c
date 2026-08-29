@@ -118,7 +118,12 @@ int ta_append(struct TokenArray* arr, enum TokenType type, const char* value, st
         arr->capacity *= 2;
         arr->data = realloc(arr->data, arr->capacity * sizeof(struct Token));
     }
-    struct Token t = {.type = type, .value = value, .line = lexer->line, .col = lexer->col};
+    struct Token t = {.type = type,
+                      .value = value,
+                      .line = lexer->line,
+                      .col = lexer->col,
+                      .offset = lexer->offset,
+                      .source = lexer->source};
     arr->data[arr->size++] = t;
     return 0;
 }
@@ -206,6 +211,7 @@ int tokenize(struct Lexer* lexer, struct Token* tokens[]) {
     const char* peek;
     while (*s) {
         peek = s + 1;
+        lexer->offset = (size_t)(s - lexer->source);
 
         switch (*s) {
             case ' ':
