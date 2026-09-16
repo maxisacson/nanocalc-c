@@ -1,7 +1,6 @@
 nc
 *.dot
 *.svg
-.clangd
 *.so
 __pycache__
 .python-version
