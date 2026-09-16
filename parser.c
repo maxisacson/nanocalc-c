@@ -397,7 +397,7 @@ void parse_expr(struct Parser* parser, struct AstNode* node) {
 void parse_disj(struct Parser* parser, struct AstNode* node) {
     parse_conj(parser, node);
 
-    if (parser->tok->type == TOK_PIPE) {
+    while (parser->tok->type == TOK_PIPE) {
         struct AstNode* rhs = node_new();
         *rhs = *node;
         node->type = AST_BINOP;
@@ -412,7 +412,7 @@ void parse_disj(struct Parser* parser, struct AstNode* node) {
 void parse_conj(struct Parser* parser, struct AstNode* node) {
     parse_comp(parser, node);
 
-    if (parser->tok->type == TOK_AMP) {
+    while (parser->tok->type == TOK_AMP) {
         struct AstNode* rhs = node_new();
         *rhs = *node;
         node->type = AST_BINOP;
