@@ -32,6 +32,13 @@ def eval_void_expression(expr):
         print(res.stderr, file=sys.stderr)
 
 
+def eval_logic_expression(expr):
+    res = subprocess.run("../nc", input=expr, text=True, capture_output=True)
+    if res.stderr:
+        print(res.stderr, file=sys.stderr)
+    return bool(to_number(res.stdout.splitlines()[-1]))
+
+
 def test_assignment():
     code = "x = 14"
 
@@ -201,6 +208,55 @@ def test_nested_scopes():
     assert v == 6
 
 
+def test_disj():
+    code = '0 | 1'
+    v = eval_logic_expression(code)
+
+    assert v
+
+
+def test_disj2():
+    code = '0 | 0'
+    v = eval_logic_expression(code)
+
+    assert not v
+
+
+def test_disj3():
+    code = '0 | 1 | 2'
+    v = eval_logic_expression(code)
+
+    assert v
+
+
+def test_conj():
+    code = '0 & 1'
+    v = eval_logic_expression(code)
+
+    assert not v
+
+
+def test_conj2():
+    code = '1 & 2'
+    v = eval_logic_expression(code)
+
+    assert v
+
+
+def test_conj3():
+    code = '0 & 1 & 2'
+    v = eval_logic_expression(code)
+
+    assert not v
+
+
+def test_conj4():
+    code = '3 & 1 & 2 & 1000'
+    v = eval_logic_expression(code)
+
+    assert v
+
+
 # def test_range():
 #     code = "1..5"
 #
@@ -333,3 +389,115 @@ def test_nested_scopes():
 #     expected = [False, True, False]
 #
 #     assert actual == expected
+
+
+def test_logic():
+    code = '!1 & 1'
+    v = eval_logic_expression(code)
+
+    assert not v
+
+
+def test_logic1():
+    code = '!0 & 1'
+    v = eval_logic_expression(code)
+
+    assert v
+
+
+def test_logic2():
+    code = '0 | !0'
+    v = eval_logic_expression(code)
+
+    assert v
+
+
+def test_logic3():
+    code = '0 | !1'
+    v = eval_logic_expression(code)
+
+    assert not v
+
+
+def test_logic4():
+    code = '!1 | 1 & 0'
+    v = eval_logic_expression(code)
+
+    assert not v
+
+
+def test_logic5():
+    code = '!0 | 0 & 0'
+    v = eval_logic_expression(code)
+
+    assert v
+
+
+def test_logic6():
+    code = '0 | !0 & 1'
+    v = eval_logic_expression(code)
+
+    assert v
+
+
+def test_logic7():
+    code = '0 | !1 & 1'
+    v = eval_logic_expression(code)
+
+    assert not v
+
+
+def test_logic8():
+    code = '!1 & 1 | 1'
+    v = eval_logic_expression(code)
+
+    assert v
+
+
+def test_logic9():
+    code = '!1 & 1 | 0'
+    v = eval_logic_expression(code)
+
+    assert not v
+
+
+def test_logic10():
+    code = '1 & !(0 | 0)'
+    v = eval_logic_expression(code)
+
+    assert v
+
+
+def test_logic11():
+    code = '1 & !(1 | 0)'
+    v = eval_logic_expression(code)
+
+    assert not v
+
+
+def test_logic12():
+    code = '!(1 & 1) | 0'
+    v = eval_logic_expression(code)
+
+    assert not v
+
+
+def test_logic13():
+    code = '!(1 & 0) | 0'
+    v = eval_logic_expression(code)
+
+    assert v
+
+
+def test_logic14():
+    code = '!(0 | 0) & 1'
+    v = eval_logic_expression(code)
+
+    assert v
+
+
+def test_logic15():
+    code = '!(1 | 0) & 1'
+    v = eval_logic_expression(code)
+
+    assert not v
