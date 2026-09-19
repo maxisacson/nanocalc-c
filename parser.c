@@ -398,10 +398,10 @@ void parse_disj(struct Parser* parser, struct AstNode* node) {
     parse_conj(parser, node);
 
     while (parser->tok->type == TOK_PIPE) {
-        struct AstNode* rhs = node_new();
-        *rhs = *node;
+        struct AstNode* lhs = node_new();
+        *lhs = *node;
         node->type = AST_BINOP;
-        node->lhs = rhs;
+        node->lhs = lhs;
         node->rhs = node_new();
         node->binop_type = parser->tok->type;
         parser->tok++;
@@ -413,10 +413,10 @@ void parse_conj(struct Parser* parser, struct AstNode* node) {
     parse_comp(parser, node);
 
     while (parser->tok->type == TOK_AMP) {
-        struct AstNode* rhs = node_new();
-        *rhs = *node;
+        struct AstNode* lhs = node_new();
+        *lhs = *node;
         node->type = AST_BINOP;
-        node->lhs = rhs;
+        node->lhs = lhs;
         node->rhs = node_new();
         node->binop_type = parser->tok->type;
         parser->tok++;
@@ -429,10 +429,10 @@ void parse_comp(struct Parser* parser, struct AstNode* node) {
 
     if (parser->tok->type == TOK_LT || parser->tok->type == TOK_GT || parser->tok->type == TOK_LEQ ||
         parser->tok->type == TOK_GEQ || parser->tok->type == TOK_EEQ || parser->tok->type == TOK_NEQ) {
-        struct AstNode* rhs = node_new();
-        *rhs = *node;
+        struct AstNode* lhs = node_new();
+        *lhs = *node;
         node->type = AST_BINOP;
-        node->lhs = rhs;
+        node->lhs = lhs;
         node->rhs = node_new();
         node->binop_type = parser->tok->type;
         parser->tok++;
