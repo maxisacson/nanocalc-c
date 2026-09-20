@@ -583,6 +583,37 @@ Value_t op_unary_not(Value_t val) {
     return TRUE;
 }
 
+Value_t op_simple(Binop_t op, Value_t lhs, Value_t rhs) {
+    switch (op) {
+        case TOK_PLUS:
+            return broadcast_func2(op_plus, lhs, rhs);
+        case TOK_MINUS:
+            return broadcast_func2(op_minus, lhs, rhs);
+        case TOK_STAR:
+            return broadcast_func2(op_times, lhs, rhs);
+        case TOK_FSLASH:
+            return broadcast_func2(op_divide, lhs, rhs);
+        case TOK_PERC:
+            return broadcast_func2(op_mod, lhs, rhs);
+        case TOK_POWER:
+            return broadcast_func2(op_power, lhs, rhs);
+        case TOK_LT:
+            return broadcast_func2(op_lt, lhs, rhs);
+        case TOK_GT:
+            return broadcast_func2(op_gt, lhs, rhs);
+        case TOK_LEQ:
+            return broadcast_func2(op_leq, lhs, rhs);
+        case TOK_GEQ:
+            return broadcast_func2(op_geq, lhs, rhs);
+        case TOK_EEQ:
+            return broadcast_func2(op_eeq, lhs, rhs);
+        case TOK_NEQ:
+            return broadcast_func2(op_neq, lhs, rhs);
+        default:
+            eval_error("unknown simple binop type: %s\n", tok_type_to_str(op));
+    };
+}
+
 bool in_range(Value_t value, Value_t begin, Value_t end) {
     if (end.type == V_INF) {
         return true;
@@ -735,29 +766,18 @@ Value_t eval_and(Context_t* context, Node_t* lhs, Node_t* rhs) {
 Value_t eval_binop(Context_t* context, Binop_t op, Node_t* lhs, Node_t* rhs) {
     switch (op) {
         case TOK_PLUS:
-            return broadcast_func2(op_plus, eval(lhs, context), eval(rhs, context));
         case TOK_MINUS:
-            return broadcast_func2(op_minus, eval(lhs, context), eval(rhs, context));
         case TOK_STAR:
-            return broadcast_func2(op_times, eval(lhs, context), eval(rhs, context));
         case TOK_FSLASH:
-            return broadcast_func2(op_divide, eval(lhs, context), eval(rhs, context));
         case TOK_PERC:
-            return broadcast_func2(op_mod, eval(lhs, context), eval(rhs, context));
         case TOK_POWER:
-            return broadcast_func2(op_power, eval(lhs, context), eval(rhs, context));
         case TOK_LT:
-            return broadcast_func2(op_lt, eval(lhs, context), eval(rhs, context));
         case TOK_GT:
-            return broadcast_func2(op_gt, eval(lhs, context), eval(rhs, context));
         case TOK_LEQ:
-            return broadcast_func2(op_leq, eval(lhs, context), eval(rhs, context));
         case TOK_GEQ:
-            return broadcast_func2(op_geq, eval(lhs, context), eval(rhs, context));
         case TOK_EEQ:
-            return broadcast_func2(op_eeq, eval(lhs, context), eval(rhs, context));
         case TOK_NEQ:
-            return broadcast_func2(op_neq, eval(lhs, context), eval(rhs, context));
+            return op_simple(op, eval(lhs, context), eval(rhs, context));
         case TOK_PIPE:
             return eval_or(context, lhs, rhs);
         case TOK_AMP:
@@ -1149,6 +1169,25 @@ Value_t eval_cases(Context_t* context, size_t stmnt_count, Node_t** stmnts) {
     return result;
 }
 
+Value_t eval_compchain(Context_t* context, struct AstNode* head, struct AstNode** tail, enum TokenType* binop_types,
+                       size_t tail_count) {
+    Value_t result = NIL;
+
+    Value_t lhs = eval(head, context);
+    Value_t rhs = eval(tail[0], context);
+
+    result = op_simple(binop_types[0], lhs, rhs);
+
+    for (size_t i = 1; i < tail_count; ++i) {
+        lhs = rhs;
+        rhs = eval(tail[i], context);
+        Value_t tmp = op_simple(binop_types[i], lhs, rhs);
+        result = op_and(result, tmp);
+    }
+
+    return result;
+}
+
 struct AstValue eval(struct AstNode* node, struct Context* context) {
     switch (node->type) {
         case AST_LITERAL:
@@ -1181,6 +1220,8 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
             return eval_case(context, node->cexpr, node->pred);
         case AST_CASES:
             return eval_cases(context, node->stmnt_count, node->stmnts);
+        case AST_COMPCHAIN:
+            return eval_compchain(context, node->head, node->tail, node->binop_types, node->tail_count);
         default:
             eval_error("unknown AST node type: %s\n", node_type_to_str(node->type));
             exit(1);

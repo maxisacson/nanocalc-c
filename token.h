@@ -2,6 +2,7 @@
 #define TOKEN_H
 
 #include <stdio.h>
+#include "utils.h"
 
 #define KEYWORDS \
     X(if)        \
@@ -70,6 +71,7 @@
 #define X(x) x,
 enum TokenType { TOKEN_TYPES };
 #undef X
+typedef enum TokenType TokenType_t;
 
 struct Token {
     enum TokenType type;
@@ -79,6 +81,8 @@ struct Token {
     size_t offset;
     const char* source;
 };
+
+make_array_def(TokenType_t, TokenTypeArray, tt_array);
 
 #endif
 

@@ -22,6 +22,7 @@
     X(AST_RANGE)      \
     X(AST_CASE)       \
     X(AST_CASES)      \
+    X(AST_COMPCHAIN)  \
     X(AST_CMD)
 
 enum NodeType {
@@ -115,8 +116,18 @@ struct AstNode {
             struct AstNode* cexpr;
             struct AstNode* pred;
         };
+
+        // AST_COMPCHAIN
+        struct {
+            struct AstNode* head;
+            struct AstNode** tail;
+            enum TokenType* binop_types;
+            size_t tail_count;
+        };
     };
 };
+
+make_array_def(struct AstNode*, AstNodeArray, ast_node_array)
 
 struct Parser {
     struct Token* tokens;

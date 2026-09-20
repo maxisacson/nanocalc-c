@@ -110,12 +110,11 @@ def test_list():
     assert r == expect
 
 
-@pytest.mark.skip("TODO")
 def test_logic_chain():
     r = run_example("logic-chain.nc")
-    expect = """
+    expect = """\
 1
-True
+1
 """
     assert r == expect
 

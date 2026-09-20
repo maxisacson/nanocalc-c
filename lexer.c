@@ -393,3 +393,5 @@ int tokenize(struct Lexer* lexer, struct Token* tokens[]) {
 
     return arr.size;
 }
+
+make_array_impl(TokenType_t, TokenTypeArray, tt_array);

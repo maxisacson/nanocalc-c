@@ -41,25 +41,28 @@ end: ';' | 'eol'
 #include "lexer.h"
 #include "utils.h"
 
+make_array_impl(struct AstNode*, AstNodeArray, ast_node_array);
+
 typedef struct AstNode Node_t;
 
 size_t node_count = 0;
 
-#define expect(token_type)                                                                                           \
-    if (parser->tok->type != (token_type)) {                                                                         \
-        syntax_error(parser->tok, "expected %s but got %s", tok_type_to_str((token_type)), tok_type_to_str(parser->tok->type)); \
+#define expect(token_type)                                                                 \
+    if (parser->tok->type != (token_type)) {                                               \
+        syntax_error(parser->tok, "expected %s but got %s", tok_type_to_str((token_type)), \
+                     tok_type_to_str(parser->tok->type));                                  \
     }
 
-#define expect2(token_type1, token_type2)                                                                              \
-    if (parser->tok->type != (token_type1) && parser->tok->type != (token_type2)) {                                    \
-        syntax_error(parser->tok, "expected %s or %s but got %s", tok_type_to_str((token_type1)), tok_type_to_str((token_type2)), \
-                     tok_type_to_str(parser->tok->type));                                                              \
+#define expect2(token_type1, token_type2)                                                         \
+    if (parser->tok->type != (token_type1) && parser->tok->type != (token_type2)) {               \
+        syntax_error(parser->tok, "expected %s or %s but got %s", tok_type_to_str((token_type1)), \
+                     tok_type_to_str((token_type2)), tok_type_to_str(parser->tok->type));         \
     }
 
-#define expect3(tt1, tt2, tt3)                                                                              \
-    if (parser->tok->type != (tt1) && parser->tok->type != (tt2) && parser->tok->type != (tt3)) {           \
+#define expect3(tt1, tt2, tt3)                                                                                         \
+    if (parser->tok->type != (tt1) && parser->tok->type != (tt2) && parser->tok->type != (tt3)) {                      \
         syntax_error(parser->tok, "expected %s, %s, or %s but got %s", tok_type_to_str((tt1)), tok_type_to_str((tt2)), \
-                     tok_type_to_str((tt3)), tok_type_to_str(parser->tok->type));                           \
+                     tok_type_to_str((tt3)), tok_type_to_str(parser->tok->type));                                      \
     }
 
 void draw_ast(Node_t* root) {
@@ -180,6 +183,27 @@ void draw_ast(Node_t* root) {
                 for (size_t j = 0; j < n->stmnt_count; ++j) {
                     fprintf(out, "v_%p -- v_%p\n", n, n->stmnts[j]);
                     queue[i++] = n->stmnts[j];
+                }
+            } break;
+            case AST_COMPCHAIN: {
+                fprintf(out, "v_%p[label=\"%s\"]\n", n, "compchain");
+
+                for (size_t j = 0; j < n->tail_count; ++j) {
+                    fprintf(out, "v_%p_%lu[label=\"%s\"]\n", n, j, binop_type_to_str(n->binop_types[j]));
+                }
+                fprintf(out, "v_%p -- v_%p_0\n", n, n);
+
+                fprintf(out, "v_%p_0 -- v_%p\n", n, n->head);
+                fprintf(out, "v_%p_0 -- v_%p\n", n, n->tail[0]);
+
+                for (size_t j = 1; j < n->tail_count; ++j) {
+                    fprintf(out, "v_%p_%lu -- v_%p\n", n, j, n->tail[j - 1]);
+                    fprintf(out, "v_%p_%lu -- v_%p\n", n, j, n->tail[j]);
+                }
+
+                queue[i++] = n->head;
+                for (size_t j = 0; j < n->tail_count; ++j) {
+                    queue[i++] = n->tail[j];
                 }
             } break;
             default:
@@ -427,16 +451,38 @@ void parse_conj(struct Parser* parser, struct AstNode* node) {
 void parse_comp(struct Parser* parser, struct AstNode* node) {
     parse_range(parser, node);
 
-    if (parser->tok->type == TOK_LT || parser->tok->type == TOK_GT || parser->tok->type == TOK_LEQ ||
-        parser->tok->type == TOK_GEQ || parser->tok->type == TOK_EEQ || parser->tok->type == TOK_NEQ) {
+    TokenTypeArray_t ops = tt_array_create();
+    AstNodeArray_t tail = ast_node_array_create();
+
+    while (parser->tok->type == TOK_LT || parser->tok->type == TOK_GT || parser->tok->type == TOK_LEQ ||
+           parser->tok->type == TOK_GEQ || parser->tok->type == TOK_EEQ || parser->tok->type == TOK_NEQ) {
+        tt_array_append(&ops, parser->tok->type);
+        parser->tok++;
+
+        struct AstNode* tmp = node_new();
+        parse_range(parser, tmp);
+        ast_node_array_append(&tail, tmp);
+    }
+
+    if (ops.size != tail.size) {
+        eval_error("count mismatch between tail and operators: %lu != %lu\n", tail.size, ops.size);
+    }
+
+    if (ops.size == 1) {
         struct AstNode* lhs = node_new();
         *lhs = *node;
         node->type = AST_BINOP;
         node->lhs = lhs;
-        node->rhs = node_new();
-        node->binop_type = parser->tok->type;
-        parser->tok++;
-        parse_range(parser, node->rhs);
+        node->rhs = tail.data[0];
+        node->binop_type = ops.data[0];
+    } else if (ops.size > 1) {
+        struct AstNode* head = node_new();
+        *head = *node;
+        node->type = AST_COMPCHAIN;
+        node->head = head;
+        node->tail = tail.data;
+        node->tail_count = tail.size;
+        node->binop_types = ops.data;
     }
 }
 
@@ -549,6 +595,7 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
 
             node->type = AST_FCALL;
             node->fname = node->name;
+            node->param_count = 0;
 
             if (parser->tok->type != TOK_RPAREN) {
                 struct AstNode* tmp = node_new();
@@ -567,7 +614,8 @@ void parse_atom_ident_tail(struct Parser* parser, struct AstNode* node) {
                 node->type = AST_FDEF;
                 for (size_t ip = 0; ip < node->param_count; ++ip) {
                     if (node->params[ip]->type != AST_IDENTIFIER) {
-                        syntax_error(parser->tok, "expected identifier but got %s", node_type_to_str(node->params[ip]->type));
+                        syntax_error(parser->tok, "expected identifier but got %s",
+                                     node_type_to_str(node->params[ip]->type));
                     }
                 }
                 node->fbody = node_new();

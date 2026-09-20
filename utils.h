@@ -37,6 +37,39 @@ void ptrarr_append(PtrArr* array, void* data);
 
 #define UNDEF_SIZE (size_t)(-1)
 
+#define make_array_def(type, struct_name, prefix)   \
+    struct struct_name {                            \
+        type* data;                                 \
+        size_t cap;                                 \
+        size_t size;                                \
+    };                                              \
+    typedef struct struct_name struct_name##_t;     \
+    struct struct_name prefix##_create();           \
+    void prefix##_destroy(struct struct_name* arr); \
+    void prefix##_append(struct struct_name* arr, type x);
+
+#define make_array_impl(type, struct_name, prefix)                          \
+    struct struct_name prefix##_create() {                                  \
+        struct struct_name arr = {.cap = 32, .size = 0};                    \
+        arr.data = (type*)malloc(arr.cap * sizeof(type));                   \
+        return arr;                                                         \
+    }                                                                       \
+                                                                            \
+    void prefix##_destroy(struct struct_name* arr) {                        \
+        arr->cap = 0;                                                       \
+        arr->size = 0;                                                      \
+        free(arr->data);                                                    \
+        arr->data = NULL;                                                   \
+    }                                                                       \
+                                                                            \
+    void prefix##_append(struct struct_name* arr, type x) {                 \
+        if (arr->size >= arr->cap) {                                        \
+            arr->cap = 2 * arr->cap;                                        \
+            arr->data = (type*)realloc(arr->data, arr->cap * sizeof(type)); \
+        }                                                                   \
+        arr->data[arr->size++] = x;                                         \
+    }
+
 #endif
 
 // vim: ft=c
