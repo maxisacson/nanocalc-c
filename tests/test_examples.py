@@ -44,6 +44,25 @@ f(-1) -1
     assert r == expect
 
 
+def test_cases3():
+    r = run_example("cases3.nc")
+    expect = """\
+1
+2
+1
+3
+"""
+    assert r == expect
+
+
+def test_cases4():
+    r = run_example("cases4.nc")
+    expect = """\
+[0, 0, 0, 1, 4]
+"""
+    assert r == expect
+
+
 def test_for_loop():
     r = run_example("for-loop.nc")
     expect = """\
@@ -98,6 +117,24 @@ this is a string not a comment
     assert r == expect
 
 
+def test_function3():
+    r = run_example("function3.nc")
+    expect = """\
+100
+1
+1
+"""
+    assert r == expect
+
+
+def test_function4():
+    r = run_example("function4.nc")
+    expect = """\
+[5, 1, 4, 1, 13]
+"""
+    assert r == expect
+
+
 def test_if():
     r = run_example("if.nc")
     expect = "42\n"
@@ -141,5 +178,25 @@ def test_recursion():
 def test_rule110():
     r = run_example("rule110.nc")
     expect = """\
+"""
+    assert r == expect
+
+
+@pytest.mark.skip("TODO: load path?")
+def test_load_plugin():
+    r = run_example("load-plugin.nc")
+    expect = """\
+"""
+    assert r == expect
+
+
+def test_table():
+    r = run_example("table.nc")
+    expect = """\
+-2 0
+-1 0
+0 0
+1 1
+2 4
 """
     assert r == expect
