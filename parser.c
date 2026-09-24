@@ -117,6 +117,11 @@ void draw_ast(Node_t* root) {
                     queue[i++] = n->items[j];
                 }
             } break;
+            case AST_IDX: {
+                fprintf(out, "v_%p[label=\"%s[]\"]\n", n, n->lname);
+                fprintf(out, "v_%p -- v_%p\n", n, n->iexpr);
+                queue[i++] = n->iexpr;
+            } break;
             case AST_FCALL: {
                 fprintf(out, "v_%p[label=\"%s()\"]\n", n, n->fname);
                 for (size_t j = 0; j < n->param_count; ++j) {

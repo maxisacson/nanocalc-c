@@ -23,35 +23,6 @@ const Value_t FALSE = {.type = V_INT, .int_value = 0};
 
 Value_t range_next(Range_t*);
 
-Value_t cmd_print(Context_t* context, size_t nargs, Node_t** args) {
-    for (size_t i = 0; i < nargs; ++i) {
-        Value_t value = eval(args[i], context);
-        if (value.type == V_RANGE) {
-            bool first = true;
-            Range_t* range = value.range_value;
-            printf("[");
-            for (Value_t val = range_next(range); !range->done; val = range_next(range)) {
-                if (!first) {
-                    printf(", ");
-                }
-                const char* out = ast_value_to_str(&val);
-                printf("%s", out);
-                first = false;
-            }
-            printf("]");
-        } else {
-            if (i > 0) {
-                printf(" ");
-            }
-            const char* out = ast_value_to_str(&value);
-            printf("%s", out);
-        }
-    }
-    printf("\n");
-
-    return NIL;
-};
-
 Value_t make_callable(EvalFunc_t* f) {
     Value_t callable = {.type = V_CALLABLE, .data = f};
     return callable;
@@ -74,6 +45,48 @@ EvalFunc_t* evalfunc_new(Context_t* context, size_t param_count, const char** pa
     ef->func = func;
 
     return ef;
+}
+
+void print_value(Value_t value) {
+    if (value.type == V_RANGE) {
+        bool first = true;
+        Range_t* range = value.range_value;
+        printf("[");
+        for (Value_t val = range_next(range); !range->done; val = range_next(range)) {
+            if (!first) {
+                printf(", ");
+            }
+            const char* out = ast_value_to_str(&val);
+            printf("%s", out);
+            first = false;
+        }
+        printf("]");
+    } else {
+        const char* out = ast_value_to_str(&value);
+        printf("%s", out);
+    }
+}
+
+Value_t cmd_print(Context_t* context, size_t nargs, Node_t** args) {
+    for (size_t i = 0; i < nargs; ++i) {
+        if (i > 0) {
+            printf(" ");
+        }
+        Value_t value = eval(args[i], context);
+        print_value(value);
+    }
+    printf("\n");
+
+    return NIL;
+};
+
+Value_t cmd_write(Context_t* context, size_t nargs, Node_t** args) {
+    for (size_t i = 0; i < nargs; ++i) {
+        Value_t value = eval(args[i], context);
+        print_value(value);
+    }
+
+    return NIL;
 }
 
 Value_t cmd_load(Context_t* context, size_t nargs, Node_t** args) {
@@ -182,6 +195,7 @@ typedef struct CmdItem CmdItem_t;
 
 const CmdItem_t commands[] = {
     {"print", cmd_print},
+    {"write", cmd_write},
     {"load", cmd_load},
     {"table", cmd_table},
 };
@@ -860,8 +874,39 @@ Value_t eval_items(Context_t* context, size_t item_count, Node_t** items) {
     result.list_size = item_count;
     result.list_value = malloc(item_count * sizeof(Value_t));
 
-    for (size_t i = 0; i < item_count; ++i) {
-        result.list_value[i] = eval(items[i], context);
+    size_t i = 0;
+    size_t j = 0;
+    while (i < item_count) {
+        Value_t value = eval(items[i++], context);
+
+        if (value.type == V_RANGE) {
+            Value_t tmp = range_to_list(value.range_value);
+
+            if (tmp.list_size > 0) {
+                // The original list grows by 1 less than the size of the expanded range, since the spot where the range
+                // was defined will hold the first item in the expanded range of length N, so we have to make room for
+                // N-1 remaining items
+                result.list_size += tmp.list_size - 1;
+                result.list_value = realloc(result.list_value, result.list_size * sizeof(Value_t));
+
+                for (size_t k = 0; k < tmp.list_size; ++k) {
+                    result.list_value[j++] = tmp.list_value[k];
+                }
+
+            } else {
+                eval_error("expected range to expand to at least one value");
+            }
+        } else {
+            result.list_value[j++] = value;
+        }
+    }
+
+    if (i != item_count) {
+        eval_error("only %lu of %lu items numerated", i, item_count);
+    }
+
+    if (j != result.list_size) {
+        eval_error("expected list size mismatch: %lu != %lu", j, result.list_size);
     }
 
     return result;

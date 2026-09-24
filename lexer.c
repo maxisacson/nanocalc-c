@@ -225,7 +225,7 @@ int tokenize(struct Lexer* lexer, struct Token* tokens[]) {
                 ++lexer->line;
                 break;
             case '#':
-                if (*peek == ' ') {
+                if (*peek == ' ' || *peek == '\n') {
                     while ((*++s) != '\n') {
                         ++lexer->col;
                     }

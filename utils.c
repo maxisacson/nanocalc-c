@@ -14,7 +14,7 @@ void sb_append(StringBuilder* sb, const char* str) {
 
     if (cap != sb->capacity) {
         sb->capacity = cap;
-        sb->data = realloc(sb->data, sb->capacity);
+        sb->data = realloc(sb->data, sb->capacity * sizeof(const char*));
     }
 
     sb->data[sb->size++] = str;

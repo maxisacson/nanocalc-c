@@ -2,7 +2,7 @@ import subprocess
 import sys
 
 
-def to_number(s):
+def to_number(s: str):
     try:
         return int(s)
     except ValueError:
@@ -12,31 +12,38 @@ def to_number(s):
         raise
 
 
-def eval_expression(expr):
+def to_list(s: str):
+    try:
+        return [to_number(x.strip()) for x in s.strip('[] \n').split(',')]
+    except Exception:
+        print(s)
+        raise
+
+
+def eval_expression(expr: str):
     res = subprocess.run("../nc", input=expr, text=True, capture_output=True)
     if res.stderr:
         print(res.stderr, file=sys.stderr)
     return res.stdout
 
 
-def eval_numeric_expression(expr):
-    res = subprocess.run("../nc", input=expr, text=True, capture_output=True)
-    if res.stderr:
-        print(res.stderr, file=sys.stderr)
-    return to_number(res.stdout.splitlines()[-1])
+def eval_numeric_expression(expr: str):
+    res = eval_expression(expr)
+    return to_number(res.splitlines()[-1])
 
 
-def eval_void_expression(expr):
-    res = subprocess.run("../nc", input=expr, text=True, capture_output=True)
-    if res.stderr:
-        print(res.stderr, file=sys.stderr)
+def eval_void_expression(expr: str):
+    _ = eval_expression(expr)
 
 
-def eval_logic_expression(expr):
-    res = subprocess.run("../nc", input=expr, text=True, capture_output=True)
-    if res.stderr:
-        print(res.stderr, file=sys.stderr)
-    return bool(to_number(res.stdout.splitlines()[-1]))
+def eval_logic_expression(expr: str):
+    res = eval_expression(expr)
+    return bool(to_number(res.splitlines()[-1]))
+
+
+def eval_list_expression(expr: str):
+    res = eval_expression(expr);
+    return to_list(res)
 
 
 def test_assignment():
@@ -255,6 +262,78 @@ def test_conj4():
     v = eval_logic_expression(code)
 
     assert v
+
+
+def test_range():
+    code = '1..4'
+    v = eval_expression(code)
+
+    assert v == '1..4\n'
+
+
+def test_range2():
+    code = '[1..4]'
+    v = eval_list_expression(code)
+
+    assert v == [1, 2, 3, 4]
+
+
+def test_range3():
+    code = '[1..5..2]'
+    v = eval_list_expression(code)
+
+    assert v == [1, 5]
+
+
+def test_range3():
+    code = '[0..10..+3]'
+    v = eval_list_expression(code)
+
+    assert v == [0, 3, 6, 9]
+
+
+def test_range4():
+    code = '[5..1]'
+    v = eval_list_expression(code)
+
+    assert v == [5, 4, 3, 2, 1]
+
+
+def test_range5():
+    code = '[5..1..3]'
+    v = eval_list_expression(code)
+
+    assert v == [5, 3, 1]
+
+
+def test_range6():
+    code = '[10..0..+2]'
+    v = eval_list_expression(code)
+
+    assert v == [10, 8, 6, 4, 2, 0]
+
+
+def test_range7():
+    code = '[0..1..5]'
+    v = eval_list_expression(code)
+
+    assert v == [0.0, 0.25, 0.5, 0.75, 1.0]
+
+
+def test_range8():
+    code = '[0..1..+0.1]'
+    v = eval_list_expression(code)
+
+    assert v == [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+
+def test_range9():
+    code = '[0...5..+1]'
+    v = eval_list_expression(code)
+
+    assert v == [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+    assert type(v[0]) is float
+
 
 
 # def test_range():
