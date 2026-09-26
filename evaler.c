@@ -844,7 +844,7 @@ Value_t eval_assignment(Context_t* context, Node_t* ident, Value_t value) {
         }
         Value_t idx = eval(ident->iexpr, context);
         if (idx.type != V_INT) {
-            eval_error("cannot index using value type: %s\n", ident->lname);
+            eval_error("cannot index using value type: %s\n", value_type_to_str(idx.type));
         }
         list.list_value[idx.int_value] = value;
     } else {
@@ -1233,6 +1233,25 @@ Value_t eval_compchain(Context_t* context, struct AstNode* head, struct AstNode*
     return result;
 }
 
+Value_t eval_idx(Context_t* context, const char* name, struct AstNode* iexpr) {
+    Value_t result = NIL;
+
+    Value_t list = get_value(context, name);
+    if (list.type == V_NIL) {
+        eval_error("did not find name in current context: %s\n", name);
+    }
+    if (list.type != V_LIST) {
+        eval_error("cannot evaluate index operator on type: %s\n", value_type_to_str(list.type));
+    }
+    Value_t idx = eval(iexpr, context);
+    if (idx.type != V_INT) {
+        eval_error("cannot index using value type: %s\n", value_type_to_str(idx.type));
+    }
+    result = list.list_value[idx.int_value];
+
+    return result;
+}
+
 struct AstValue eval(struct AstNode* node, struct Context* context) {
     switch (node->type) {
         case AST_LITERAL:
@@ -1267,6 +1286,8 @@ struct AstValue eval(struct AstNode* node, struct Context* context) {
             return eval_cases(context, node->stmnt_count, node->stmnts);
         case AST_COMPCHAIN:
             return eval_compchain(context, node->head, node->tail, node->binop_types, node->tail_count);
+        case AST_IDX:
+            return eval_idx(context, node->lname, node->iexpr);
         default:
             eval_error("unknown AST node type: %s\n", node_type_to_str(node->type));
             exit(1);

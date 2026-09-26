@@ -335,6 +335,24 @@ def test_range9():
     assert type(v[0]) is float
 
 
+def test_index():
+    code = """
+    x = [1, 2, 3]
+    x[0]
+"""
+    v = eval_numeric_expression(code)
+    assert v == 1
+
+
+def test_index_assignment():
+    code = """
+    x = [1, 2, 3]
+    x[0] = 2.5
+    x
+"""
+    v = eval_list_expression(code)
+    assert v == [2.5, 2, 3]
+
 
 # def test_range():
 #     code = "1..5"
