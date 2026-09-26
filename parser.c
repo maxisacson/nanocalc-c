@@ -3,9 +3,9 @@
 program: 'eol'*, stmnts?, 'eol'*
 stmnts: stmnt, { end+, stmnt }, end*
 stmnt:
-  | 'for', 'identifier', 'in', expr, 'eol'?, stmnt
-  | 'command', expr*
-  | expr, [ 'if', expr ]
+    | 'for', 'identifier', 'in', expr, 'eol'?, stmnt
+    | 'command', expr*
+    | expr, [ 'if', expr ]
 expr: disj
 disj: conj, { '|', conj }
 conj: comp, { '&', comp }
@@ -14,21 +14,21 @@ range: sum, [ '..', sum, [ '..', '+'?, sum ] ]
 sum: term, { '+' | '-', term }
 term: factor, { '*' | '/' | '%', factor }
 factor:
-  | ('-' | '#', '!'), factor
-  | atom, [ '^', factor ]
+    | ('-' | '#', '!'), factor
+    | atom, [ '^', factor ]
 atom:
-  | 'identifier', atom_ident_tail?
-  | '(', expr, ')'
-  | '[', items?, ']'
-  | 'integer'
-  | 'float'
-  | 'string'
-  | 'Inf'
-  | block
+    | 'identifier', atom_ident_tail?
+    | '(', expr, ')'
+    | '[', items?, ']'
+    | 'integer'
+    | 'float'
+    | 'string'
+    | 'Inf'
+    | block
 atom_ident_tail:
-  | '=', expr
-  | '(', items?, ')', [ '=', expr ]
-  | '[', expr, ']', [ '=', expr ]
+    | '=', expr
+    | '(', items?, ')', [ '=', expr ]
+    | '[', expr, ']', [ '=', expr ]
 items: expr, { ',', expr }
 block: '{', 'eol'*, stmnts?, 'eol'*, '}'
 end: ';' | 'eol'
