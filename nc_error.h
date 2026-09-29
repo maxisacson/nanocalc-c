@@ -52,4 +52,10 @@
     fprintf(stderr, "unreachable_code: %s: %s:%d\n", __PRETTY_FUNCTION__, __FILE__, __LINE__); \
     abort()
 
+#define fatal(condition)                                                                                      \
+    if (condition) {                                                                                          \
+        fprintf(stderr, "fatal error: %s: %s:%d: %s\n", __PRETTY_FUNCTION__, __FILE__, __LINE__, #condition); \
+        abort();                                                                                              \
+    }
+
 #endif

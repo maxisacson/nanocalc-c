@@ -20,6 +20,8 @@ enum ValueType {
 #undef X
 };
 
+#define UNDEF_SIZE (size_t)(-1)
+
 struct RangeValue;
 
 struct AstValue {

@@ -834,6 +834,97 @@ Value_t eval_unop(Context_t* context, Unop_t op, Node_t* node) {
     }
 }
 
+void set_item(Value_t list, Value_t index, Value_t value) {
+    fatal(list.type != V_LIST);
+
+    if (index.type != V_INT) {
+        eval_error("cannot index using value type: %s\n", value_type_to_str(index.type));
+    }
+
+    if (index.int_value < 0 || (size_t)index.int_value >= list.list_size) {
+        eval_error("index out of range: %lld out of %zu\n", index.int_value, list.list_size);
+    }
+
+    list.list_value[index.int_value] = value;
+}
+
+void set_items(Value_t list, Value_t indices, Value_t values) {
+    fatal(indices.type != V_LIST);
+
+    size_t idx_count = indices.list_size;
+
+    if (values.type == V_RANGE) {
+        Range_t* range = values.range_value;
+        Value_t val = range_next(range);
+        size_t i = 0;
+        while (i < idx_count && !range->done) {
+            set_item(list, indices.list_value[i++], val);
+            val = range_next(range);
+        }
+
+        if (i < idx_count) {
+            eval_error("size mismatch: trying to assign %zu positions to %zu values\n", idx_count, i);
+        }
+
+        if (!range->done) {
+            eval_error("size mismatch: range was not exhausted after %zu assignments\n", idx_count);
+        }
+    } else if (values.type == V_LIST) {
+        if (values.list_size != idx_count) {
+            eval_error("size mismatch: trying to assign %zu positions to %zu values\n", idx_count, values.list_size);
+        }
+
+        for (size_t i = 0; i < idx_count; ++i) {
+            set_item(list, indices.list_value[i], values.list_value[i]);
+        }
+    } else {
+        for (size_t i = 0; i < idx_count; ++i) {
+            set_item(list, indices.list_value[i], values);
+        }
+    }
+}
+
+void set_items_by_range(Value_t list, Range_t* idx_range, Value_t values) {
+    if (values.type == V_RANGE) {
+        Range_t* range = values.range_value;
+        Value_t val = range_next(range);
+        Value_t idx = range_next(idx_range);
+        while (!idx_range->done && !range->done) {
+            set_item(list, idx, val);
+            val = range_next(range);
+            idx = range_next(idx_range);
+        }
+
+        if (!range->done || !idx_range->done) {
+            eval_error("range mismatch: range was not exhausted: value: %s, index: %s\n", range->done ? "yes" : "no",
+                       idx_range->done ? "yes" : "no");
+        }
+
+    } else if (values.type == V_LIST) {
+        size_t value_count = values.list_size;
+        Value_t idx = range_next(idx_range);
+        size_t i = 0;
+        while (!idx_range->done && i < value_count) {
+            set_item(list, idx, values.list_value[i++]);
+            idx = range_next(idx_range);
+        }
+
+        if (i < value_count) {
+            eval_error("size mismatch: trying to assign %zu positions to %zu values\n", i, value_count);
+        }
+
+        if (!idx_range->done) {
+            eval_error("size mismatch: range was not exhausted after %zu assignments\n", i);
+        }
+    } else {
+        Value_t idx = range_next(idx_range);
+        while (!idx_range->done) {
+            set_item(list, idx, values);
+            idx = range_next(idx_range);
+        }
+    }
+}
+
 Value_t eval_assignment(Context_t* context, Node_t* ident, Value_t value) {
     if (ident->type == AST_IDENTIFIER) {
         set_value(context, ident->name, value);
@@ -843,10 +934,19 @@ Value_t eval_assignment(Context_t* context, Node_t* ident, Value_t value) {
             eval_error("did not find name in current context: %s\n", ident->lname);
         }
         Value_t idx = eval(ident->iexpr, context);
-        if (idx.type != V_INT) {
-            eval_error("cannot index using value type: %s\n", value_type_to_str(idx.type));
+        switch (idx.type) {
+            case V_INT:
+                set_item(list, idx, value);
+                break;
+            case V_RANGE:
+                set_items_by_range(list, idx.range_value, value);
+                break;
+            case V_LIST:
+                set_items(list, idx, value);
+                break;
+            default:
+                eval_error("cannot index using value type: %s\n", value_type_to_str(idx.type));
         }
-        list.list_value[idx.int_value] = value;
     } else {
         eval_error("unexpected lvalue type: %s\n", node_type_to_str(ident->type));
     }

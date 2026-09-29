@@ -200,3 +200,21 @@ def test_table():
 2 4
 """
     assert r == expect
+
+
+def test_item_assignment():
+    r = run_example("item-assignment.nc")
+    expect = "[1, 2, 0, 4, 5]\n"
+    assert r == expect
+
+
+def test_item_assignment2():
+    r = run_example("item-assignment2.nc")
+    expect = "[1, 0, 0, 0, 5]\n"
+    assert r == expect
+
+
+def test_item_assignment3():
+    r = run_example("item-assignment3.nc")
+    expect = "[-1, 2, -1, 4, -1]\n"
+    assert r == expect

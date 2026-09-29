@@ -35,8 +35,6 @@ typedef struct {
 
 void ptrarr_append(PtrArr* array, void* data);
 
-#define UNDEF_SIZE (size_t)(-1)
-
 #define make_array_def(type, struct_name, prefix)   \
     struct struct_name {                            \
         type* data;                                 \
