@@ -14,6 +14,7 @@
     X(print)     \
     X(write)     \
     X(table)     \
+    X(put)       \
     X(sum)       \
     X(prod)      \
     X(load)      \
@@ -63,6 +64,7 @@
     X(CMD_print)      \
     X(CMD_write)      \
     X(CMD_table)      \
+    X(CMD_put)      \
     X(CMD_sum)        \
     X(CMD_prod)       \
     X(CMD_load)       \

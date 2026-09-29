@@ -89,6 +89,33 @@ Value_t cmd_write(Context_t* context, size_t nargs, Node_t** args) {
     return NIL;
 }
 
+Value_t cmd_put(Context_t* context, size_t nargs, Node_t** args) {
+    for (size_t i = 0; i < nargs; ++i) {
+        Value_t value = eval(args[i], context);
+        switch (value.type) {
+            case V_RANGE: {
+                Range_t* range = value.range_value;
+                for (Value_t val = range_next(range); !range->done; val = range_next(range)) {
+                    const char* out = ast_value_to_str(&val);
+                    printf("%s", out);
+                }
+            } break;
+            case V_LIST: {
+                for (size_t j = 0; j < value.list_size; ++j) {
+                    const char* out = ast_value_to_str(value.list_value + j);
+                    printf("%s", out);
+                }
+            } break;
+            default: {
+                const char* out = ast_value_to_str(&value);
+                printf("%s", out);
+            } break;
+        }
+    }
+
+    return NIL;
+}
+
 Value_t cmd_load(Context_t* context, size_t nargs, Node_t** args) {
     check_nargs(1);
 
@@ -193,12 +220,15 @@ struct CmdItem {
 };
 typedef struct CmdItem CmdItem_t;
 
+// clang-format off
 const CmdItem_t commands[] = {
     {"print", cmd_print},
     {"write", cmd_write},
     {"load", cmd_load},
     {"table", cmd_table},
+    {"put", cmd_put},
 };
+// clang-format on
 
 Cmd_t get_cmd(const char* name) {
     size_t count = sizeof(commands) / sizeof(commands[0]);
