@@ -174,11 +174,12 @@ def test_recursion():
     assert r == expect
 
 
-@pytest.mark.skip("TODO")
 def test_rule110():
     r = run_example("rule110.nc")
-    expect = """\
-"""
+
+    with open("data/rule110.txt", 'r') as f:
+        expect = f.read()
+
     assert r == expect
 
 
@@ -217,4 +218,18 @@ def test_item_assignment2():
 def test_item_assignment3():
     r = run_example("item-assignment3.nc")
     expect = "[-1, 2, -1, 4, -1]\n"
+    assert r == expect
+
+def test_arrays():
+    r = run_example("arrays.nc")
+    expect = """\
+11
+16
+16
+11
+14
+13
+12
+15
+"""
     assert r == expect

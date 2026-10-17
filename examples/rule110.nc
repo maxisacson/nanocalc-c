@@ -1,7 +1,7 @@
 N = 512
 M = 128
-state = 0..0..M
-state[0] = 1
+state = [0..0..M]
+state[M-1] = 1
 
 f(i) = {
     0 if state[i-1..i+1] == [1, 1, 1]
@@ -14,14 +14,14 @@ f(i) = {
     0 if state[i-1..i+1] == [0, 0, 0]
 }
 
-write state " "
-write "\n"
-for i in 2..N {
-    next = 0..0..M
-    for j in 1..#state {
+put state
+print
+for i in 1..N-1 {
+    next = [0..0..M]
+    for j in 0..#state-1 {
         next[j] = f(j)
     }
     state = next
-    write state " "
-    write "\n"
+    put state
+    print
 }

@@ -39,6 +39,11 @@ Value_t make_float(double x) {
     return value;
 }
 
+Value_t make_list(size_t count) {
+    Value_t value = NC_LIST(count);
+    return value;
+}
+
 bool is_negative(Value_t value) {
     switch (value.type) {
         case V_INT:
@@ -59,9 +64,13 @@ bool is_truthy(Value_t value) {
         case V_STRING:
             return strlen(value.string_value) > 0;
         case V_LIST:
+            for (size_t i = 0; i < value.list_size; ++i) {
+                if (!is_truthy(value.list_value[i])) {
+                    return false;
+                }
+            }
             return value.list_size > 0;
         default:
             return false;
     }
 }
-

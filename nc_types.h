@@ -68,6 +68,7 @@ const char* value_type_to_str(enum ValueType value_type);
 double as_float(Value_t value);
 Value_t make_int(long long x);
 Value_t make_float(double x);
+Value_t make_list(size_t count);
 bool is_negative(Value_t value);
 bool is_truthy(Value_t value);
 

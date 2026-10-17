@@ -864,6 +864,30 @@ Value_t eval_unop(Context_t* context, Unop_t op, Node_t* node) {
     }
 }
 
+Value_t get_item(Value_t list, Value_t index) {
+    fatal(list.type != V_LIST);
+
+    if (index.type != V_INT) {
+        eval_error("cannot index using value type: %s\n", value_type_to_str(index.type));
+    }
+
+    long long idx = index.int_value;
+
+    // 0 based periodic indexing
+    if (idx < 0) {
+        size_t n = (-idx) / (list.list_size + 1);
+        idx += (n + 1) * list.list_size;
+    } else if (idx >= list.list_size) {
+        size_t n = idx / list.list_size;
+        idx -= n * list.list_size;
+    }
+
+    fatal(idx < 0);
+    fatal(idx >= list.list_size);
+
+    return list.list_value[idx];
+}
+
 void set_item(Value_t list, Value_t index, Value_t value) {
     fatal(list.type != V_LIST);
 
@@ -1374,10 +1398,26 @@ Value_t eval_idx(Context_t* context, const char* name, struct AstNode* iexpr) {
         eval_error("cannot evaluate index operator on type: %s\n", value_type_to_str(list.type));
     }
     Value_t idx = eval(iexpr, context);
-    if (idx.type != V_INT) {
-        eval_error("cannot index using value type: %s\n", value_type_to_str(idx.type));
+    switch (idx.type) {
+        case V_INT:
+            result = get_item(list, idx);
+            break;
+        case V_LIST:
+            result = make_list(idx.list_size);
+            for (size_t i = 0; i < idx.list_size; ++i) {
+                result.list_value[i] = get_item(list, idx.list_value[i]);
+            }
+            break;
+        case V_RANGE:
+            idx = range_to_list(idx.range_value);
+            result = make_list(idx.list_size);
+            for (size_t i = 0; i < idx.list_size; ++i) {
+                result.list_value[i] = get_item(list, idx.list_value[i]);
+            }
+            break;
+        default:
+            eval_error("cannot index using value type: %s\n", value_type_to_str(idx.type));
     }
-    result = list.list_value[idx.int_value];
 
     return result;
 }
