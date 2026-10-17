@@ -1,5 +1,5 @@
 CompileFlags:
-  Add: -DDEBUG
+  Add: [-DDEBUG, -Wall, -Wextra, -std=c23]
 
 ---
 
