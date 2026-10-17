@@ -18,6 +18,7 @@ typedef struct {
 
 void sb_append(StringBuilder* sb, const char* str);
 void sb_append_v(StringBuilder* sb, size_t count, const char* strings[]);
+void sb_append_f(StringBuilder* sb, const char* fmt, ...);
 const char* sb_string(StringBuilder* sb);
 StringBuilder sb_join(const char* sep, size_t strc, const char** strs);
 

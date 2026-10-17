@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <stdarg.h>
 #include <string.h>
 
 void sb_append(StringBuilder* sb, const char* str) {
@@ -18,6 +19,15 @@ void sb_append(StringBuilder* sb, const char* str) {
     }
 
     sb->data[sb->size++] = str;
+}
+
+void sb_append_f(StringBuilder* sb, const char* fmt, ...) {
+    char* buf = malloc(256 * sizeof(char));
+    va_list args;
+    va_start(args, fmt);
+    vsprintf(buf, fmt, args);
+    va_end(args);
+    sb_append(sb, buf);
 }
 
 StringBuilder sb_join(const char* sep, size_t strc, const char** strs) {

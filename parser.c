@@ -277,6 +277,41 @@ const char* ast_value_to_str(struct AstValue* value) {
     return sb_string(&sb);
 }
 
+const char* ast_value_to_repr(struct AstValue* value) {
+    StringBuilder sb = {};
+
+    sb_append(&sb, "Value{\n");
+    sb_append_f(&sb, "    Type: %s\n", value_type_to_str(value->type));
+
+    switch (value->type) {
+        case V_LIST:
+            sb_append_f(&sb, "    Length: %zu\n", value->list_size);
+            break;
+        case V_RANGE:
+            sb_append_f(&sb, "    Start: %s\n", ast_value_to_str(&value->range_value->start));
+            sb_append_f(&sb, "    Stop: %s\n", ast_value_to_str(&value->range_value->stop));
+            sb_append_f(&sb, "    Current: %s\n", ast_value_to_str(&value->range_value->value));
+            sb_append_f(&sb, "    Step: %s\n", ast_value_to_str(&value->range_value->step));
+            sb_append_f(&sb, "    Count: %zu\n", value->range_value->count);
+            if (value->range_value->length == UNDEF_SIZE) {
+                sb_append(&sb, "    Length: UNDEFINED\n");
+            } else {
+                sb_append_f(&sb, "    Length: %zu\n", value->range_value->length);
+            }
+            sb_append_f(&sb, "    Done: %s\n", value->range_value->done ? "True" : "False");
+            sb_append_f(&sb, "    Started: %s\n", value->range_value->started ? "True" : "False");
+            break;
+        default:
+            break;
+    }
+
+    sb_append(&sb, "    Value: ");
+    sb_append(&sb, ast_value_to_str(value));
+    sb_append(&sb, "\n}\n");
+
+    return sb_string(&sb);
+}
+
 const char* binop_type_to_str(enum TokenType binop_type) {
     switch (binop_type) {
         case TOK_LEQ:

@@ -18,6 +18,7 @@
     X(sum)       \
     X(prod)      \
     X(load)      \
+    X(inspect)   \
     X(dump)
 
 #define TOKEN_TYPES   \
@@ -64,7 +65,8 @@
     X(CMD_print)      \
     X(CMD_write)      \
     X(CMD_table)      \
-    X(CMD_put)      \
+    X(CMD_put)        \
+    X(CMD_inspect)    \
     X(CMD_sum)        \
     X(CMD_prod)       \
     X(CMD_load)       \

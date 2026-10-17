@@ -116,6 +116,15 @@ Value_t cmd_put(Context_t* context, size_t nargs, Node_t** args) {
     return NIL;
 }
 
+Value_t cmd_inspect(Context_t* context, size_t nargs, Node_t** args) {
+    for (size_t i = 0; i < nargs; ++i) {
+        Value_t value = eval(args[i], context);
+        const char* out = ast_value_to_repr(&value);
+        printf("%s", out);
+    }
+    return NIL;
+}
+
 Value_t cmd_load(Context_t* context, size_t nargs, Node_t** args) {
     check_nargs(1);
 
@@ -227,6 +236,7 @@ const CmdItem_t commands[] = {
     {"load", cmd_load},
     {"table", cmd_table},
     {"put", cmd_put},
+    {"inspect", cmd_inspect},
 };
 // clang-format on
 

@@ -346,6 +346,17 @@ def test_range11():
     assert v == [-1, 1, 2, 3]
 
 
+def test_range12():
+    code = """\
+    x = 0..1
+    print x
+    print x
+    """
+    v = eval_expression(code)
+
+    assert v == "[0, 1]\n[0, 1]\n"
+
+
 def test_index():
     code = """
     x = [1, 2, 3]
