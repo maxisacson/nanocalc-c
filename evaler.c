@@ -694,7 +694,10 @@ Range_t* range_new(Value_t start, Value_t stop, Value_t step, size_t length) {
 
 Value_t range_next(Range_t* range) {
     if (range->done) {
-        eval_error("attempt to call next on an exhausted range\n");
+        range->value = NIL;
+        range->count = 0;
+        range->done = false;
+        range->started = false;
     }
 
     if (range->length != UNDEF_SIZE) {
@@ -709,7 +712,6 @@ Value_t range_next(Range_t* range) {
             range->value = range->start;
             range->started = true;
         }
-        range->count++;
     } else {
         if (range->started) {
             range->value = op_plus(range->value, range->step);
@@ -723,6 +725,7 @@ Value_t range_next(Range_t* range) {
             range->done = true;
         }
     }
+    range->count++;
 
     return range->value;
 }
