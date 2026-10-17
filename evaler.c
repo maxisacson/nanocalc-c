@@ -877,13 +877,13 @@ Value_t get_item(Value_t list, Value_t index) {
     if (idx < 0) {
         size_t n = (-idx) / (list.list_size + 1);
         idx += (n + 1) * list.list_size;
-    } else if (idx >= list.list_size) {
+    } else if ((size_t)idx >= list.list_size) {
         size_t n = idx / list.list_size;
         idx -= n * list.list_size;
     }
 
     fatal(idx < 0);
-    fatal(idx >= list.list_size);
+    fatal((size_t)idx >= list.list_size);
 
     return list.list_value[idx];
 }
