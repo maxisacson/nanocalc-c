@@ -54,6 +54,8 @@
 
 #define fatal(condition)                                                                                      \
     if (condition) {                                                                                          \
+        print_backtrace();                                                                                    \
+        lineno();                                                                                             \
         fprintf(stderr, "fatal error: %s: %s:%d: %s\n", __PRETTY_FUNCTION__, __FILE__, __LINE__, #condition); \
         abort();                                                                                              \
     }

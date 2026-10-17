@@ -608,7 +608,7 @@ Value_t op_neq(Value_t lhs, Value_t rhs) {
 }
 
 Value_t op_unary_minus(Value_t val) {
-    Value_t result;
+    Value_t result = {};
     if (val.type == V_INT) {
         result.type = V_INT;
         result.int_value = -val.int_value;
@@ -984,9 +984,14 @@ Value_t eval_assignment(Context_t* context, Node_t* ident, Value_t value) {
         set_value(context, ident->name, value);
     } else if (ident->type == AST_IDX) {
         Value_t list = get_value(context, ident->lname);
+
         if (list.type == V_NIL) {
             eval_error("did not find name in current context: %s\n", ident->lname);
+        } else if (list.type == V_RANGE) {
+            list = range_to_list(list.range_value);
+            set_value(context, ident->lname, list);
         }
+
         Value_t idx = eval(ident->iexpr, context);
         switch (idx.type) {
             case V_INT:

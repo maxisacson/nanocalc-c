@@ -42,7 +42,7 @@ def eval_logic_expression(expr: str):
 
 
 def eval_list_expression(expr: str):
-    res = eval_expression(expr);
+    res = eval_expression(expr)
     return to_list(res)
 
 
@@ -285,49 +285,49 @@ def test_range3():
     assert v == [1, 5]
 
 
-def test_range3():
+def test_range4():
     code = '[0..10..+3]'
     v = eval_list_expression(code)
 
     assert v == [0, 3, 6, 9]
 
 
-def test_range4():
+def test_range5():
     code = '[5..1]'
     v = eval_list_expression(code)
 
     assert v == [5, 4, 3, 2, 1]
 
 
-def test_range5():
+def test_range6():
     code = '[5..1..3]'
     v = eval_list_expression(code)
 
     assert v == [5, 3, 1]
 
 
-def test_range6():
+def test_range7():
     code = '[10..0..+2]'
     v = eval_list_expression(code)
 
     assert v == [10, 8, 6, 4, 2, 0]
 
 
-def test_range7():
+def test_range8():
     code = '[0..1..5]'
     v = eval_list_expression(code)
 
     assert v == [0.0, 0.25, 0.5, 0.75, 1.0]
 
 
-def test_range8():
+def test_range9():
     code = '[0..1..+0.1]'
     v = eval_list_expression(code)
 
     assert v == [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
 
-def test_range9():
+def test_range10():
     code = '[0...5..+1]'
     v = eval_list_expression(code)
 
@@ -335,11 +335,22 @@ def test_range9():
     assert type(v[0]) is float
 
 
+def test_range11():
+    code = """\
+    x = 0..3
+    x[0] = -1
+    x
+    """
+    v = eval_list_expression(code)
+
+    assert v == [-1, 1, 2, 3]
+
+
 def test_index():
     code = """
     x = [1, 2, 3]
     x[0]
-"""
+    """
     v = eval_numeric_expression(code)
     assert v == 1
 
@@ -349,7 +360,7 @@ def test_index_assignment():
     x = [1, 2, 3]
     x[0] = 2.5
     x
-"""
+    """
     v = eval_list_expression(code)
     assert v == [2.5, 2, 3]
 
@@ -360,7 +371,7 @@ def test_index_assignment2():
     a = 1
     x[a] = -1
     x
-"""
+    """
     v = eval_list_expression(code)
     assert v == [1, -1, 3]
 
@@ -371,7 +382,7 @@ def test_multiple_index_assignment():
     x = [1, 2, 3, 4, 5]
     x[1..3] = 0
     x
-"""
+    """
     v = eval_list_expression(code)
     assert v == [1, 0, 0, 0, 5]
 
@@ -382,7 +393,7 @@ def test_multiple_index_assignment2():
     x = [1, 2, 3, 4, 5]
     x[[0,2,4]] = -1
     x
-"""
+    """
     v = eval_list_expression(code)
     assert v == [-1, 2, -1, 4, -1]
 
@@ -392,7 +403,7 @@ def test_multiple_index_assignment3():
     x = [1, 2, 3, 4, 5]
     x[0..5..+2] = -1
     x
-"""
+    """
     v = eval_list_expression(code)
     assert v == [-1, 2, -1, 4, -1]
 
@@ -402,7 +413,7 @@ def test_multiple_index_assignment4():
     x = [1, 2, 3, 4, 5]
     x[1..3] = [-2, -3, -4]
     x
-"""
+    """
     v = eval_list_expression(code)
     assert v == [1, -2, -3, -4, 5]
 
@@ -412,7 +423,7 @@ def test_multiple_index_assignment5():
     x = [1, 2, 3, 4, 5]
     x[1..3] = 20..40..3
     x
-"""
+    """
     v = eval_list_expression(code)
     assert v == [1, 20, 30, 40, 5]
 
@@ -422,7 +433,7 @@ def test_multiple_index_assignment6():
     x = [1, 2, 3, 4, 5]
     x[[1, 2, 3]] = [100, 200, 300]
     x
-"""
+    """
     v = eval_list_expression(code)
     assert v == [1, 100, 200, 300, 5]
 
@@ -432,7 +443,7 @@ def test_multiple_index_assignment7():
     x = [1, 2, 3, 4, 5]
     x[[1, 2, 3]] = 6..8
     x
-"""
+    """
     v = eval_list_expression(code)
     assert v == [1, 6, 7, 8, 5]
 
